@@ -218,17 +218,6 @@ including the ones used by genericpve.
 This might be worked on if more maps use vscript in the future but ZI and VSH
 both break the bots pathing aswell so it is not worth to fix. 
 
-Recommended Maps
-----------------
-- cp_degrootkeep 
-  - bots get stuck until both outside points are capped, then the chaos starts
-- cp_freaky_fair
-  - fun chaos, bots do not know how to use upgrades
-- pl_badwater
-- pl_breadspace
-- pl_swiftwater
-- pl_upward
-
 Recommended server.cfg
 ----------------------
 ```
