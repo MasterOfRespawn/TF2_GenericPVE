@@ -7,6 +7,11 @@ All players are put on BLU and have to fight against a horde of all identically
 equipped bots on RED. The goal of the mode is to simply win like usual.
 All settings are at the start of the file.
 
+Public server
+-------------
+We have a server running this plugin at: `152.53.53.243`.
+If the server changes, this section will be updated.
+
 Features
 --------
 - Preset based bot system
