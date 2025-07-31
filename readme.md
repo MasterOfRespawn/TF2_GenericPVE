@@ -30,6 +30,7 @@ Features
 - Automatic navmesh generation if a map is missing a navmesh
   - manual navmesh generation if on a listen server
 - Bots can not deal random crits but humans can.
+- Presets can enable/disable medieval mode.
 
 Deviations from normal gameplay
 -------------------------------
@@ -148,6 +149,8 @@ Presets
   - knife only spy bots
   - have 1 hp
   - fun challenge with certain weapon combos
+- glass_canon_mm
+  - **EXPERIMENTAL** like glass_canon but in medieval mode
 
 Bot Counts
 ----------

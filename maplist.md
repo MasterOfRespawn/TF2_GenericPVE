@@ -10,8 +10,8 @@ Summer Update 2025
 ------------------
 This has not yet been tested. All maps load however and PVE starts successfully.
 - [ ] pl_aquarius
-- [X] koth_blowout
-    - visual issues (areaportals)
+- [ ] koth_blowout
+    - visual issues (areaportals (fixed))
 - [ ] koth_boardwalk
 - [ ] cp_cargo
 - [ ] pl_citadel
@@ -20,8 +20,8 @@ This has not yet been tested. All maps load however and PVE starts successfully.
 - [ ] cp_fulgur
     - last point has spawn nearby -> impossible (?) to cap with 50 heavies
 - [ ] koth_mannhole
-- [X] ctf_pressure
-    - visual issues (areaportals)
+- [ ] ctf_pressure 
+    - visual issues (areaportals (fixed))
 
 Attack/Defend
 -------------

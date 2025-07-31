@@ -22,10 +22,6 @@
 # vote extend round
 ::PVEVoteOption3 <- "heavy"
 
-/*      *\
- ADVANCED
-\*      */
-
 # leave true if uncertain
 ::PVEUseMapReccomendedSettings <- true
 # works in 99% of cases
@@ -87,8 +83,17 @@
 # should be changed map specific
 ::PVEResetBotsOnCapturedPoint <- false
 
-::PVEAllowSpecialClassBot <- true
+# required for thin heavy
+::PVEAllowSpecialClassBot <- false
 ::PVEForceSpecialBotType <- null
+
+# set to null for default, false to disable and true to enable
+::PVEForceMedieval <- null
+# set to false to prevent presets changing medieval
+::PVEAllowPresetToForceMedieval <- true
+# Map specific, skips waiting for players
+# This can be used to fix maps with areaportals not opening on round start
+::PVECancelPlayerWait <- false
 
 # set to true automatically on certain map types
 # Disables the entire PVE system
@@ -218,6 +223,8 @@
 		bot_attributes = 0
 		# can be a preset name (will only be applied to one bot)
 		specialbot = null
+		# force enable / disable medieval (true/false) or do nothing (null)
+		medieval = null
 	}
 	blank = {
 		classname = "scout"
@@ -436,14 +443,22 @@
 		melees = [ { id = 4 } ] // Knife
 		maxhealth = 1
 	}
+	glass_canon_mm = {
+		classname = "spy"
+		difficulty = 3
+		namechoices = [ "_" ]
+		melees = [ { id = 4 } ] // Knife
+		maxhealth = 1
+		medieval = true // experimental (force medieval)
+	}
 }
 
 ::PVEMapSettingOverrides <- {
 	# summer 2025
 	pl_aquarius = { PVEPropCleanupRespectCollision = true }
-	koth_blowout = { } # cleaup breaks blu areaportals
-	koth_boardwalk = { PVEPropCleanupRespectCollision = true PVEDoNotCleanDetails = true } # spawn doors still disappear
-	ctf_pressure = { } # cleaup breaks areaportals to tunnels
+	koth_blowout = { PVECancelPlayerWait = true }
+	koth_boardwalk = { PVEPropCleanupRespectCollision = true }
+	ctf_pressure = { PVECancelPlayerWait = true }
 	pl_citadel = { PVEResetBotsOnCapturedPoint = true }
 	cp_fulgur = { PVEIncreaseHumanCount = true }
 	# fix issues with PropDynamics
@@ -453,8 +468,8 @@
 	koth_suijin = { PVEPropCleanupRespectCollision = true }
 	koth_king = { PVEDoNotCleanDetails = true }
 	pl_cashworks = { PVEDoNotCleanDetails = true }
-	# this map has a very high edict count
-	pl_patagonia = { PVEReduceSpawnpoints = true PVEAggressiveCleanup = true } # areaportals at 1st spawn break
+	# this map has a very high edict count, areaportals at 1st spawn break
+	pl_patagonia = { PVEReduceSpawnpoints = true PVEAggressiveCleanup = true PVECancelPlayerWait = true }
 	# bots keep spawning until the server crashes
 	mvm = { PVEForceDisable = true }
 	# prevent pass time crashing entirely by self disableing
@@ -1707,6 +1722,40 @@ RegisterEvent("OnGameEvent_teamplay_round_start", function(params) {
 	}
 })
 
+########
+# TEST #
+########
+::PVEMedievalEnabledByDefault <- null
+::PVEToggleMedieval <- function(enable = null) {
+	local rules = Entities.FindByClassname(null, "tf_gamerules")
+	local current = NetProps.GetPropBool(rules, "m_bPlayingMedieval")
+	if (enable == null) enable = !current
+	if (PVEMedievalEnabledByDefault == null) ::PVEMedievalEnabledByDefault <- current
+	NetProps.SetPropBool(rules, "m_bPlayingMedieval", enable)
+	Convars.SetValue("tf_medieval", enable)
+	if (current != enable)
+		for (local i = 1; i < MaxPlayers; i++) {
+			local p = PlayerInstanceFromIndex(i)
+			if (!p) continue
+			ClientPrint(p, 4, "Medieval mode has been " + (enable ? "enabled" : "disabled"))
+			p.Regenerate(true)
+		}
+}
+::PVERevertMedieval <- function() {
+	local rules = Entities.FindByClassname(null, "tf_gamerules")
+	local current = NetProps.GetPropBool(rules, "m_bPlayingMedieval")
+	if (PVEMedievalEnabledByDefault == null) ::PVEMedievalEnabledByDefault <- NetProps.GetPropBool(rules, "m_bPlayingMedieval")
+	NetProps.SetPropBool(rules, "m_bPlayingMedieval", PVEMedievalEnabledByDefault)
+	Convars.SetValue("tf_medieval", PVEMedievalEnabledByDefault)
+	if (current != PVEMedievalEnabledByDefault)
+		for (local i = 1; i < MaxPlayers; i++) {
+			local p = PlayerInstanceFromIndex(i)
+			if (!p) continue
+			ClientPrint(p, 4, "Medieval mode has reverted to be " + (PVEMedievalEnabledByDefault ? "enabled" : "disabled"))
+			p.Regenerate(true)
+		}
+}
+
 #############
 # PVE SETUP #
 #############
@@ -1733,6 +1782,16 @@ RegisterEvent("OnGameEvent_teamplay_round_start", function(params) {
 	# preset specific
 	Convars.SetValue("tf_bot_difficulty", PVECurrentClass.difficulty)
 	Convars.SetValue("tf_bot_force_class", PVECurrentClass.classname)
+
+	if (PVECancelPlayerWait)
+		Convars.SetValue("mp_waitingforplayers_cancel", 1)
+	if (PVEForceMedieval != null) {
+		PVEToggleMedieval(PVEForceMedieval)
+	} else if (PVEAllowPresetToForceMedieval && ("medieval" in PVECurrentClass && PVECurrentClass.medieval != null)) {
+		PVEToggleMedieval(PVECurrentClass.medieval)
+	} else {
+		PVERevertMedieval()
+	}
 }
 
 ########################
