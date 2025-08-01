@@ -616,9 +616,9 @@ if (PVEAutoGenNavMesh && !PVEForceDisable) {
 			local cheats_on = Convars.GetInt("sv_cheats") != 0
 			local cmd = cheats_on ? "nav_generate" : "sv_cheats 1 ; nav_generate ; sv_cheats 0"
 			PVELoadClassConfig("disable")
+			::PVEForceDisable <- true
 			if (PVEIsOnDedicatedServer) {
 				SendToServerConsole(cmd)
-				::PVEForceDisable <- true
 				AddThinkToEnt(Entities.FindByClassname(null, "tf_player_manager"), "PVEMainLoop")
 			}
 			else {
@@ -2110,9 +2110,13 @@ RegisterCommand("!pve", function(player, args){
 			if (PVERunning) {
 
 			} else if (PVEForceDisable) {
-				ClientPrint(player, 3, "PVE has been disabled on " + GetMapName() + " to prevent crashes.")
-				ClientPrint(player, 3, "If you are sure the map works, change the config.")
-				ClientPrint(player, 3, "If you are unsure, change the map.")
+				if (PVEAutoGenNavMesh && PVENavGenerates) {
+					AddThinkToEnt(Entities.FindByClassname(null, "tf_player_manager"), "PVEMainLoop")
+				} else {
+					ClientPrint(player, 3, "PVE has been disabled on " + GetMapName() + " to prevent crashes.")
+					ClientPrint(player, 3, "If you are sure the map works, change the config.")
+					ClientPrint(player, 3, "If you are unsure, change the map.")
+				}
 			} else {
 				::PVERunning <- true
 				::PVEDisabled <- false
