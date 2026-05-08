@@ -2,9 +2,6 @@
  CONF
 \*  */
 
-# todo: set "increase buff duration HIDDEN" to 0.6 on medic to reduce active shield time.
-# todo: set "kill eater score type [N]" on all items to -1 to prevent spawncamping for point farming
-
 # To everybody trying to read this script: I'm sorry for the chaos
 
 # Block all commands except from listen server host if whitelist is empty
@@ -18,18 +15,21 @@
 ::PVEUseMapReccomendedSettings <- true
 # Automatically generate a navmesh on dedicated servers
 ::PVEAutoGenNavMesh <- true
+# go through all maps in the mapcycle and generate missing navmeshes
+# still somewhat experimental
+::PVEAutoGenNavMeshAllMaps <- false
+# Use todo list instead of mapcycle txt
+::PVEAutoGenNavMeshAllMapsByList <- true
 # allow engineers to build in spawn rooms
 ::PVEAllowBuildInSpawn <- true
 # these settings may break non linear control point layouts
-::PVENextPointCapForceLinear <- 1 # false # deprecated
-::PVEBlockNextPointCapDelay <- 0 # 20 # deprecated
+::PVENextPointCapForceLinear <- true # deprecated (sort of?)
 # bots respawn truly instantly
 ::PVEBluImmediateRespawn <- null
 ::PVERedImmediateRespawn <- null
 ::PVEBotsAllowImmediateRespawnAfterRound <- false
 # Disable BLU flag to prevent RED winning on CTF maps
 ::PVEDisableCtfRED <- true
-::PVEDisableCtfREDSwapTeam <- false
 # Disable random crits and bullet spread
 ::PVEDisableRandomness <- false
 # Disable random critical hits (for bots only) (should work with all weapons)
@@ -71,18 +71,13 @@
 # If true, equip weapons one by one.
 # This does mess with the bots sometimes
 ::PVEAllowDelayedEquip <- true
-# may have unforseen consequences
-::PVEReduceSpawnpoints <- false
-# may result in ugly visuals
+# may result in ugly visuals (DEPRECATED)
 ::PVEAggressiveCleanup <- false
 # reset current game for proper startup
 ::PVELocalInitResetGame <- false
 # setup points after round start on local pve initialization
 ::PVELocalInitPrepareMap <- true
 
-# experimental (this is just me messing around)
-# show cumulative bot health
-::PVEShowBotHealth <- false
 # force this script to load on VScript maps (may still break in some cases)
 # the currently used approach is very bad but may get some maps to work properly
 ::PVEExperimentalTryVScriptMaps <- true
@@ -117,9 +112,6 @@
 # This can be used to fix maps with areaportals not opening on round start
 ::PVECancelPlayerWait <- false
 
-# use old vote system (recycling existing vgui vote issues for presets)
-::PVEOldPresetVoteSystem <- false
-
 # set to true automatically on certain map types
 # Disables the entire PVE system
 ::PVEForceDisable <- false
@@ -137,17 +129,7 @@ if (Convars.GetStr("hostname") == "One Thousand Uncles with mvm upgrades") ::PVE
 else if (Convars.GetStr("hostname") == "One Jontillion Spies") ::PVEOverrideClass <- "jonto"
 if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 ::PVEDefaultIntelClass <- "sentry" # (currently disabled)
-# autobalance
-::PVEVoteOption1 <- "sentry"
-# class limit
-::PVEVoteOption2 <- "bonk"
-# expand round
-::PVEVoteOption3 <- "heavy"
 
-# TODO: MISSION_SNIPER (3) fixes vineyard, etc.
-# TODO: (2) bots do not capture points if this is active (only use for RED)
-# NOTE: setting tf_bot_offense_must_push_time to 0 forces bots to move (according to wiki)
-# NOTE: this may only be partially correct
 ::FixMePVEForceMissionType <- -1
 ::FixMePVEForceMissionTypeDefault <- 0
 ::FixMePVEForceMissionTypeIntel <- 3
@@ -351,6 +333,8 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 		uncletopia_ctf = false
 		# prevent backcapping for spies like on uncletopia (for n seconds)
 		uncletopia_capblock = 0
+		# bot is on human team
+		ally = false
 	}
 	attr_test = {
 		classname = "scout"
@@ -387,8 +371,7 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 		classname = "demoman"
 		difficulty = 3
 		keepstock = true
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
-		#convars = [{ name = "tf_escort_recede_time" value = 10 }]
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
 	}
 	serversoldier = {
 		# soldier with a banner
@@ -396,10 +379,9 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 		difficulty = 3
 		keepstock = true
 		secondaries = [129 226 354]
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
 		#bot_attributes = 256 # SPAWN_WITH_FULL_CHARGE
 		netprops = [{ name = "m_Shared.tfsharedlocaldata.m_flRageMeter" value = 100.0}]
-		#convars = [{ name = "tf_escort_recede_time" value = 10 }]
 	}
 	# todo: remove these again after testing
 	why = {
@@ -423,8 +405,7 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 		primaries = [741]
 		melees = [739]
 		#cosmetics = [738 743 745]
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
-		#convars = [{ name = "tf_escort_recede_time" value = 10 }]
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
 	}
 	serverspy = {
 		classname = "spy"
@@ -507,13 +488,11 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 			{ id = 588 }
 		]
 		#secondaries = [ { id = 22 } ] # they dont use the pistol
-		#secondaries = [ { id = 528 } ] # experiment: short circuit (this works)
 		melees = [
 			{
 				id = 7
 				attributes =  [
 					{ name = "fire rate bonus"			value = 0.6 }
-					{ name = "dmg bonus vs buildings"	value = 500 }
 				]
 				weight = 0.99
 			}
@@ -521,7 +500,6 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 				id = 1071
 				attributes =  [
 					{ name = "fire rate bonus"			value = 0.6 }
-					{ name = "dmg bonus vs buildings"	value = 500 }
 				]
 				weight = 0.01
 			}
@@ -530,7 +508,7 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 			{ name = "metal regen"					value = 500 }
 			{ name = "maxammo metal increased"		value = 2.5 }
 			{ name = "max health additive bonus"	value = 60 }
-			//{ name = "mod teleporter cost"			value = 110 }
+			//{ name = "mod teleporter cost"			value = 20 } # this breaks on 5cp, use tf_bot_max_teleport_entrance_travel
 		]
 		cosmetics = [
 			{
@@ -556,8 +534,8 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 				]
 			}
 		]
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
-		convars = [{ name = "tf_escort_recede_time" value = 10 } { name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
+		convars = [{ name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
 		uncletopia_ctf = true
 		uncletopia_capblock = 20
 		immediate_respawn = true
@@ -585,8 +563,8 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 			}
 			{ id = 936 }
 		]
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
-		convars = [{ name = "tf_escort_recede_time" value = 10 } { name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
+		convars = [{ name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
 		uncletopia_ctf = true
 		uncletopia_capblock = 20
 		immediate_respawn = true
@@ -864,12 +842,59 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 				]
 			}
 		]
-		payload_speed_limit = {maxspeed=63, accelspeed=50}
-		convars = [{ name = "tf_escort_recede_time" value = 10 } { name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
+		payload_speed_limit = {maxspeed=63, accelspeed=50 rollbackdelay=10}
+		convars = [{ name = "tf_bot_max_teleport_entrance_travel" value = -10 /* NEVER BUILD TELEPORTERS */ }]
 		uncletopia_ctf = true
 		uncletopia_capblock = 20
 		immediate_respawn = true
-		# model = "models/bots/engineer/bot_engineer.mdl" # does not have correct bodygroups
+		#metapreset = IsHolidayActive(Constants.EHoliday.kHoliday_AprilFools) ? [{ count = 5 chances = [ { name = "dane_extra_april"} ]}] : []
+	}
+	dane_extra_april = {
+		classname = "spy"
+		difficulty = 3
+		namechoices = [
+			"Uncle Behind you"
+			"Uncle Spy around here"
+			"Uncle Name"
+			"Uncle Back"
+			"Definitely the real Uncle Dane"
+			"\"Uncle\""
+		]
+		forcebotdecrease = true
+		#primaries = [24 525] # revolver and diamondback
+		primaries = [588] # pomson
+		secondaries = [30] # not tecnically a secondary but they need disguises anyways
+		melees = [4 225 1071 649]
+		attributes = [
+			{ name = "metal regen"					value = 500 }
+			{ name = "maxammo metal increased"		value = 2.5 }
+			{ name = "max health additive bonus"	value = 60 }
+			{ name = "mult cloak meter regen rate" 	value = 4 }
+		]
+		cosmetics = [
+			{
+				id = 30539
+				attributes = [
+					{ name = "set item tint RGB"		value = 15132390 }
+					{ name = "set item tint RGB 2"		value = 15132390 }
+				]
+			}
+			{
+				id = 30420
+				attributes = [
+					{ name = "set item tint RGB"		value = 15132390 }
+					{ name = "set item tint RGB 2"		value = 15132390 }
+					{ name = "attach particle effect"	value = 61 }
+				]
+			}
+			{
+				id = 30172
+				attributes = [
+					{ name = "set item tint RGB"		value = 15132390 }
+					{ name = "set item tint RGB 2"		value = 15132390 }
+				]
+			}
+		]
 	}
 }
 
@@ -893,7 +918,7 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 	[[ "koth_viaduct_event" "koth_lakeside_event" ]] = { PVEDoNotAggroOnHealthbar = true PVESoftSpawnCampProtectionEnabled = false },
 	koth_krampus = { PVEForceBotSpawnLocation = Vector(0,0,-60) PVEDoNotAggroOnHealthbar = true },
 	# this map has a very high edict count, this is like a panic mode
-	[[ "pl_patagonia" "pl_bloodwater" ]] = { PVEInitialEquipForceDelayed = true PVEReduceSpawnpoints = true PVEAggressiveCleanup = true /*PVECancelPlayerWait = true*/ PVEClearBotItemsOnRoundEnd = true PVEExtremeEquipDelay=true },
+	[[ "pl_patagonia" "pl_bloodwater" ]] = { PVEInitialEquipForceDelayed = true PVEAggressiveCleanup = true /*PVECancelPlayerWait = true*/ PVEClearBotItemsOnRoundEnd = true PVEExtremeEquipDelay=true },
 	# mvm flood spawns bots
 	mvm = { PVEForceDisableReason = "crash prevention" PVEForceDisable = true },
 	# zi and vsh break so just don't activate
@@ -909,9 +934,8 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 	# actually specific stuff
 	cp_cowerhouse = { FixMePVEForceMissionType = 3 CleanupRespectCollision = true }, # I need to check this map again
 	cp_freaky_fair = { CleanupPropsOnlyOnce = true PVEFixParallelDelayFunctions = true PVEForceEnableFakeSetup = true PVEMvmUpgrades = false },
-	ctf_crasher = { PVEDisableCtfREDSwapTeam = true },
-	cp_cloak = { PVENextPointCapForceLinear = false PVEUpgradeIncludeSpawnrooms = true PVEFakeSetupPlayerStun = 1.0 PVEFakeSetupTime = 30 },
-	sd_marshlands = { FixMePVEForceMissionType = 0 PVETimerRefStepSize = 1 PVEAddTimer = false }, # hold the flag works out of the box (todo: detect better)
+	cp_cloak = { PVENextPointCapForceLinear = false PVEUpgradeIncludeSpawnrooms = true },
+	htf_marshlands = { FixMePVEForceMissionType = 0 PVETimerRefStepSize = 1 PVEAddTimer = false }, # hold the flag works out of the box (todo: detect better)
 	plr = { PVEForceEnableFakeSetup = true },
 }
 
@@ -948,8 +972,8 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass
 # CUSTOM EVENT: Setup
 # fired once the map loaded
 # CUSTOM EVENT: Update
-# fired every 0.105 seconds
-# tied to soundent (preserved/first ent to spawn) for now
+# fired every 1/66 seconds
+# tied to soundent (preserved + one of the first ents to spawn) for now
 
 # setup registered event table
 if (!("EventTable" in this)) ::EventTable <- {}
@@ -966,7 +990,7 @@ CollectedFunctionTable.clear()
 ::DebugEvents <- false
 # main function to register an event handler in other scripts
 # may autocollect registered events in a future version
-::CustomEventNames <- ["PreUpdate" "Update" "Setup" "OnScriptHook_OnTakeDamage" "MapReset"]
+::CustomEventNames <- ["PreUpdate" "Update" "Setup" "OnScriptHook_OnTakeDamage" "MapReset" "MapResetPrePoints"]
 ::RegisterEvent <- function(name, handler) {
     EventFunctionTable[CustomEventNames.find(name) != null ? name : ("OnGameEvent_" + name)] <- function(params) {
 		if (DebugEvents && name != "Update" && name != "PreUpdate") {
@@ -1069,15 +1093,93 @@ function setup_event_system() {
 }
 // prevent error spam
 RegisterEvent("OnScriptHook_OnTakeDamage", function(params){})
+if (!("EventSystem_RoundStartHookEnt" in this))
+	::EventSystem_RoundStartHookEnt <- Entities.FindByClassname(null, "tf_team_manager")
+if (!EventSystem_RoundStartHookEnt || !EventSystem_RoundStartHookEnt.IsValid())
+	::EventSystem_RoundStartHookEnt <- Entities.CreateByClassname("filter_activator_tfteam") # entity for "RoundSpawn" hook
+EventSystem_RoundStartHookEnt.DispatchSpawn()
+NetProps.SetPropString(EventSystem_RoundStartHookEnt, "m_iClassname", "tf_team_manager") # this classname does not exist but is preserved
+if (!("EventSystem_RoundCleanupDetector" in this))
+	::EventSystem_RoundCleanupDetector <- Entities.FindByClassname(null, "logic_restart")
+if (!EventSystem_RoundCleanupDetector || !EventSystem_RoundCleanupDetector.IsValid())
+	::EventSystem_RoundCleanupDetector <- Entities.CreateByClassname("logic_relay")
+EventSystem_RoundCleanupDetector.DispatchSpawn()
+NetProps.SetPropString(EventSystem_RoundCleanupDetector, "m_iClassname", "logic_restart") # this classname does not exist
+
+// ToDo: This entire hook is dumb
+::SetupMapResetPrePointsHook <- function(params={}) {
+	# fallback hook
+	local scope = UTILGetScriptScope(EventSystem_RoundStartHookEnt)
+	local temp = function() {
+		if ("MapResetPrePoints" in CollectedFunctionTable) CollectedFunctionTable.MapResetPrePoints({
+		    RESET = !EventSystem_RoundCleanupDetector.IsValid()
+		})
+		# Everything done in this function breaks the UI in different stupid ways.
+		# At least break the UI consistantly accross maps
+		if (Entities.FindByClassname(null, "team_control_point_round") != null){ # always do this on multistage maps
+			local or = Entities.FindByClassname(null, "tf_objective_resource")
+			local inround = []
+			const NUM_CONTROL_POINTS = 8 // NetProps.GetPropInt(or, "m_iNumControlPoints") // this breaks
+			RunNextStep(function(){
+				for (local i=0;i < NUM_CONTROL_POINTS; i++) {
+					inround.push([
+						NetProps.GetPropBoolArray(or, "m_bCPIsVisible", i)
+						NetProps.GetPropBoolArray(or, "m_bInMiniRound", i)
+					])
+				}
+			})
+			// This may be unstable on pl_odyssey
+			RunInNSeconds(2, function() {
+				for (local i=0;i < NUM_CONTROL_POINTS; i++) {
+					NetProps.SetPropBoolArray(or, "m_bCPIsVisible", inround[i][0], i)
+					NetProps.SetPropBoolArray(or, "m_bInMiniRound", inround[i][1], i)
+				}
+				// Just tell the objective resource the ui needs to be invalidated once again
+				NetProps.SetPropBool(or, "m_bControlPointsReset", !NetProps.GetPropBool(or, "m_bControlPointsReset"))
+			})
+		}
+		# This still needs to be fired again. Why is tf2 like this?
+		# Why can't this hook actually hook the thing it's supposed to hook
+		// should probably not do this if pve is not active but on a dedicated
+		// server it is always active anyways
+		foreach(classname in [ "team_control_point_master" # keep order intact
+		        "team_control_point_round"
+		        "info_player_teamspawn"
+		    ]) for (local e; e = Entities.FindByClassname(e, classname);) {
+				local t = e
+				local s = t.tostring()
+				RunInNSteps(5, function(){ # run immediately to delay again?
+					// this has not been reacehd yet but it will once I remove it
+					if (!t || !t.IsValid()) {
+						print("Broken entity reference")
+						printl(s)
+						return;
+					}
+					t.AcceptInput("RoundSpawn", "", t, t)
+				})
+			}
+
+		# do not process RoundSpawn for this temporary entity
+		return false
+	}
+	scope.InputRoundSpawn <- temp
+	scope.Inputroundspawn <- temp
+}
 // custom event MapReset
 ::EventInMapReset <- false
 RegisterEvent("stats_resetround", function(params) {
 	::EventInMapReset <- true
 })
+RegisterEvent("Setup", SetupMapResetPrePointsHook)
 RegisterEvent("recalculate_holidays", function(params) {
 	if (!EventInMapReset) return;
 	::EventInMapReset <- false
-	if ("MapReset" in CollectedFunctionTable) CollectedFunctionTable.MapReset({})
+	if ("MapReset" in CollectedFunctionTable) CollectedFunctionTable.MapReset({
+		RESET = !EventSystem_RoundCleanupDetector.IsValid()
+	})
+	if (!EventSystem_RoundCleanupDetector.IsValid())
+		::EventSystem_RoundCleanupDetector <- Entities.CreateByClassname("logic_relay")
+	EventSystem_RoundCleanupDetector.DispatchSpawn()
 })
 // event system setup
 RegisterEvent("player_spawn", function(params) {
@@ -1195,58 +1297,52 @@ RegisterCommand("!ccmd", function(player, args) {
 ::QueueCurrentStep <- 0
 RegisterEvent("Update", function (params) {
 	::QueueCurrentStep <- QueueCurrentStep + 1
-	::QueueCurrentTime <- Time()
+	#if (DelayedFunctionQueue.len()) printl("DFQ: " + DelayedFunctionQueue.len())
 	if (DelayedFunctionQueue.len() > 0) DelayedFunctionQueue.pop()()
 	local queue = OneStepQueue
 	::OneStepQueue <- []
+	#if (queue.len()) printl("OSQ: " + OneStepQueue.len())
 	while (queue.len() > 0) queue.pop()()
 	queue = SetDelayQueue
+	local temp = []
+	local remove
+	#if (queue.len()) print("SDQ: " + QueueCurrentStep.tostring() + ":")
 	for (local i=queue.len() - 1; i >= 0; i--) {
-		local remove = false
-		local execute = true
+		remove = false
 		if (true) {
-			local next = queue[i]
-			#foreach(k,v in next) printf("%s: %s, ", k.tostring(), v.tostring())
-			#printl("")
-			if (next.step >= 0) {
-				#printl(QueueCurrentStep)
-				execute = next.step <= QueueCurrentStep
-			} else if (next.time >= 0) {
-				#printl(QueueCurrentTime)
-				execute = next.time <= QueueCurrentTime
-			}
-			if ("DELETE" in next) {
+			#print("," + queue[i][0].tostring())
+			if (queue[i][0] < QueueCurrentStep){
+				#print("[REMOVED]")
 				remove = true
-			} else if (execute) {
-				next.func()
-				next.DELETE <- true
+				queue[i][1]()
 			}
 		}
-		if (remove) {
-			#printl("REMOVE")
-			queue.remove(i)
+		if (!remove) {
+			temp.push(queue[i])
 		}
 	}
+	#if (SetDelayQueue.len()) printf(":%d\n", temp.len())
+	::SetDelayQueue <- temp
 })
 ::RunDelayed <- function(f) {
+	#printf("New Delayed function %d\n", OneStepQueue.len()+1)
 	DelayedFunctionQueue.insert(0, f)
 }
 ::RunNextStep <- function(f) {
+	#printf("New Nextstep function %d\n", OneStepQueue.len()+1)
 	OneStepQueue.insert(0, f)
 }
 ::RunInNSteps <- function(stepcount, f) {
+	#printf("New delay: %d (due %d) [now %d in queue]\n", stepcount, stepcount + QueueCurrentStep, SetDelayQueue.len()+1)
 	if (stepcount <= 0) {
 		RunNextStep(f)
 	} else {
-		SetDelayQueue.insert(0, {func=f step=QueueCurrentStep+stepcount time=-1})
+		SetDelayQueue.insert(0, [QueueCurrentStep + stepcount f])
 	}
 }
 ::RunInNSeconds <- function(seconds, f) {
-	if (seconds <= 0) {
-		RunNextStep(f)
-	} else {
-		SetDelayQueue.insert(0, {func=f step=-1 time=Time()+seconds})
-	}
+	# may not be 100% accurate but reduces number of additional checks
+	RunInNSteps(ceil(seconds*66.0), f)
 }
 ::EMPTYFUNCTION <- function(){}
 # call an empty function a specified ammount of times
@@ -1280,6 +1376,14 @@ RegisterEvent("Update", function (params) {
 ::ForeachBot <- function(f) { for (local i=1; i <= MaxPlayers; i++) RunForBotFromIndex(i, f) }
 // This needs to go somewhere else later
 ::StringIsTruthy <- function(s) { return s != "0" && s.tolower() != "false" }
+::ForeachEnt <- function(f) { for(local e = Entities.First(); e = Entities.Next(e);) f(e) }
+::EntByHammerID <- function(id) {
+	if (typeof(id) != "integer") id = id.tointeger()
+	for (local e = Entities.First(); e = Entities.Next(e);) {
+		if (NetProps.GetPropInt(e, "m_iHammerID") == id) return e;
+	}
+	return null;
+}
 
 # I dont know where else to put this, but it's related to bots
 ::UTILBotSetMissionSafe <- function(bot, mission, reset_behavior_system = false, next_target = null) {
@@ -1348,8 +1452,8 @@ RegisterEvent("Setup", function(params){
 	if (d) PVELoadClassConfig("disable")
 	else PVEInitCVars()
 })
+::PVENavGenDisableReason <- "navmesh generation required (type !nmg in chat or nav_generate in console)"
 if (PVEAutoGenNavMesh && !PVEForceDisable) {
-	::PVENavGenDisableReason <- "navmesh generation required (type !nmg in chat or nav_generate in console)"
 	::PVENavGenerates <- false
 	RegisterEvent("Setup", function(params) {
 		if (!PVENavGenerates && NavMesh.GetNavAreaCount() == 0) {
@@ -1364,10 +1468,27 @@ if (PVEAutoGenNavMesh && !PVEForceDisable) {
 			PVELoadClassConfig("disable")
 			::PVEForceDisable <- true
 			::PVEForceDisableReason <- PVENavGenDisableReason
-			if (PVEIsOnDedicatedServer) {
+			if (PVEAutoGenNavMeshAllMaps || PVEIsOnDedicatedServer) {
+				if (PVEAutoGenNavMeshAllMaps) {
+					// keep stats of manually generated navmeshes
+					const NAVGEN_LOGFILE = "navgens.txt"
+					local f = FileToString(NAVGEN_LOGFILE)
+					if (!f) f = ""
+					StringToFile(NAVGEN_LOGFILE, f + GetMapName() + "\n")
+				}
 				if (PVEDebugPrint)
 					printl("[PVENAVGEN] "  + GetMapName() + " " + PVEGetTimestamp())
-				RunCommandWithCheats("nav_generate")
+				if (PVEIsOnDedicatedServer) {
+					RunCommandWithCheats("nav_generate")
+				} else {
+					::fired <- false
+					// wait for the local player to be initialized
+					RegisterEvent("player_spawn", function(params) {
+						if (!fired)
+							RunCommandWithCheats("nav_generate")
+						::fired <- true
+					})
+				}
 			}
 			else {
 				::PVEMaintenanceMode <- false
@@ -1379,6 +1500,48 @@ if (PVEAutoGenNavMesh && !PVEForceDisable) {
 						ClientPrint(p, 4, "Missing navmesh for " + GetMapName() + ".")
 						#ClientPrint(p, 4, "Missing navmesh for " + GetMapName() + ".\nTo use PVE please generate a navmesh by writing `!nmg` in chat after the round starts.\nOtherwise the bots won`t move.")
 					}
+				})
+			}
+		} else if (PVEAutoGenNavMeshAllMaps) {
+			const NAVGEN_STATFILE = "navcheck.txt"
+			local checked = FileToString(NAVGEN_STATFILE)
+			if (!checked) checked = ""
+			if (checked.find(GetMapName()+"\n") == null) {
+				#printl("Mesh for " + GetMapName() + "exists, going to next map")
+				#ClientPrint(null, 4, "Mesh for " + GetMapName() + "exists, going to next map")
+				// the map has not been checked successful, mark as done
+				StringToFile(NAVGEN_STATFILE, checked + GetMapName()+"\n")
+				// Try the next map
+				if (PVEAutoGenNavMeshAllMapsByList) {
+					// map logic handled outside the if
+				} else {
+					::PVEGoToRandomMapOnGameOver <- false // go to next map in cycle
+					Convars.SetValue("mp_chattime", 0)
+					Entities.CreateByClassname("point_intermission").DispatchSpawn()
+					EntFire("point_intermission", "Activate", "", 0, null)
+				}
+			}
+			// always work on todo list
+			if (PVEAutoGenNavMeshAllMapsByList) {
+				const NAVGEN_REQUIREMENTS = "navtodo.txt"
+				local todolist = FileToString(NAVGEN_REQUIREMENTS)
+				#printl(todolist)
+				if (!todolist) todolist = ""
+				#printl(todolist)
+				local next = split(todolist, "\r\n\t ", true)
+				if (next.len() == 0 || !next[0] || next[0] == "") {
+					#printl("NAVGEN DONE")
+					#ClientPrint(null, 4, "navgen done")
+					return;
+				}
+				local nextlevel = next[0]
+				local stilltodo = ""
+				for (local i=1; i < next.len(); i++) {
+					stilltodo += next[i] + "\n"
+				}
+				StringToFile(NAVGEN_REQUIREMENTS, stilltodo)
+				RegisterEvent("player_spawn", function(params){
+					RunCommand("changelevel " + nextlevel)
 				})
 			}
 		}
@@ -3104,7 +3267,6 @@ RegisterEvent("Setup", function(params){
 ]
 ::ENTKILL_FINISHED_ONCE <- false
 ::ENTKILL_RAGDOLLCOUNT <- 0
-::PVEReduceSpawnpointsBotOnly <- false
 ::KillEnts <- function() {
 	# limit per step as killents runs perpetually now
 	#local i = 0
@@ -3191,53 +3353,6 @@ RegisterEvent("Setup", function(params){
 					}
 					entity.Kill()
 					#i++
-				}
-			}
-		}
-		if (PVEReduceSpawnpoints) {
-			local knownrooms = []
-			local points = []
-			for (local entity; entity = Entities.FindByClassname(entity, "info_player_teamspawn");) {
-				if (points.find(entity) == null) {
-					points.push(entity)
-					#print("Adding point")
-				} /* else {
-					#print("Double point")
-				} */
-				#print(" red: ")
-				#print(NetProps.GetPropString(entity, "m_iszRoundRedSpawn"))
-				#print(" blu: ")
-				#print(NetProps.GetPropString(entity, "m_iszRoundBlueSpawn"))
-				#print(" ent: ")
-				#printl(entity)
-			}
-			foreach (entity in points){
-				local red = NetProps.GetPropString(entity, "m_iszRoundRedSpawn")
-				local blu = NetProps.GetPropString(entity, "m_iszRoundBlueSpawn")
-				local r = null
-				for (local t; t = Entities.FindInSphere(t, entity.GetCenter(), 1.0);) {
-					if (t.GetClassname() == "func_respawnroom") r = t
-				}
-				if (!r) {
-					#printl("NO ASSOCIATED RESPAWNROOM FOUND")
-					continue
-				}
-				foreach (room in knownrooms) {
-					if (r==room[0] && red == room[1] && blu == room[2]) {
-						#print(" -> found existing room: ")
-						#print(r)
-						#printf(" - r: %s - b: %s\n", red, blu)
-						if (entity.GetTeam() == PVEBotTeam || !PVEReduceSpawnpointsBotOnly)
-							entity.Kill()
-						entity = null
-						break
-					}
-				}
-				if (entity) {
-					#print(" -> adding unknown room: ")
-					#print(r)
-					#printf(" - r: %s - b: %s\n", red, blu)
-					knownrooms.push([r, red, blu])
 				}
 			}
 		}
@@ -3385,8 +3500,10 @@ RegisterEvent("teamplay_round_start", function(params) {
 	}
 
 	# preset specific
-	Convars.SetValue("tf_bot_difficulty", PVECurrentClass.difficulty)
-	Convars.SetValue("tf_bot_force_class", PVECurrentClass.classname)
+	if (PVECurrentClass) {
+		Convars.SetValue("tf_bot_difficulty", "difficulty" in PVECurrentClass ? PVECurrentClass.difficulty : 3)
+		Convars.SetValue("tf_bot_force_class", "classname" in PVECurrentClass ? PVECurrentClass.classname : "scout")
+	}
 
 	if (PVECancelPlayerWait) {
 		RunDelayedWait(30)
@@ -3406,7 +3523,7 @@ RegisterEvent("teamplay_round_start", function(params) {
 ########################
 ::ClassIDToClassName <- function(id) {
 	switch (id) {
-		case 0: return "undefined"
+		case 0: #return "undefined" # temp, check for bug
 		case 1: return "scout"
 		case 2: return "sniper"
 		case 3: return "soldier"
@@ -3447,7 +3564,7 @@ RegisterEvent("teamplay_round_start", function(params) {
 	switch (id) {
 		case -2: return "any"
 		case -1: return "invalid"
-		case 0: return "undefined"
+		case 0: #return "undefined" # temp, check for bug
 		case 1: return "spectator"
 		case 2: return "red"
 		case 3: return "blue"
@@ -3485,8 +3602,16 @@ RegisterEvent("teamplay_round_start", function(params) {
 ::MoveTeam <- function(player) {
 	if (PVEDisabled || ("PVEMoveTeamDisabled" in this && PVEMoveTeamDisabled)) return
 	if (player.IsFakeClient()) {
-		if (player.GetTeam() != PVEBotTeam) {
-			player.ForceChangeTeam(PVEBotTeam, false)
+		# wip / todo: test
+		local desired_team = PVEBotTeam
+		local scope = UTILGetScriptScope(player)
+		if ("c" in scope) {
+			if ("ally" in scope.c && scope.c.ally == true) {
+				desired_team = PVEHumanTeam
+			}
+		}
+		if (player.GetTeam() != desired_team) {
+			player.ForceChangeTeam(desired_team, false)
 			player.ForceRegenerateAndRespawn()
 			#RunDelayedForPlayer(player, function(){
 			#	player.SetTeam(PVEBotTeam)
@@ -3776,7 +3901,7 @@ RegisterEvent("player_connect", function(params) {
 				new_weapon = heldWeapon
 				break
 			}
-			player.Weapon_Switch(new_weapon)
+			if (new_weapon && new_weapon.IsValid()) player.Weapon_Switch(new_weapon)
 		})
 		if (PVEGiveBotsCosmetics && "cosmetics" in c && c.cosmetics.len() > 0 && ((!("wearables" in scope)) || scope.wearables.len() == 0))
 			run_now_or_delayed(function(){
@@ -3891,6 +4016,7 @@ RegisterEvent("player_spawn", function(params) {
 			for (local i=0; i < (PVEBotCount - quota); i++) {
 				local i = i # create local variable to prevent upvalue issues
 				RunInNSeconds(i*0.1, function(){
+					if (!PVEAddBotsSilent || PVEDisabled) return; # mvm failsafe
 					local gr = Entities.FindByClassname(null, "tf_gamerules")
 					local mm = IsInMedievalMode() # m_bPlayingMedieval
 					local mvm = IsMannVsMachineMode() # m_bPlayingMannVsMachine
@@ -3943,7 +4069,7 @@ RegisterEvent("player_spawn", function(params) {
 
 ::PVECurrentClass <- null
 ::PVESetClassDefault <- function(classname, player=null) {
-	::PVEOverrideClass <- classname
+	#::PVEOverrideClass <- classname
 	::PVEDefaultClass <- classname
 	::PVEDefaultIntelClass <- classname
 	PVELoadClassConfig(classname, player)
@@ -3999,8 +4125,6 @@ RegisterEvent("player_spawn", function(params) {
 		p.RemoveAllObjects(false)
 	})
 	::PVEState <- 0
-	if (PVEShowBotHealth)
-		NetProps.SetPropInt(Entities.FindByClassname(null, "monster_resource"), "m_iBossHealthPercentageByte", 0)
 }
 
 # pve team mirror mode -> humans red, bots blu
@@ -4075,16 +4199,6 @@ RegisterCommand("!pve", function(player, args){
 				PVECalcHumanBotCount()
 			} else {
 				ClientPrint(player, 3, args[0] + args[1] + " ! Missing parameter [bool] (currently " + (PVEIncreaseHumanCount ? "true)" : "false)"))
-			}
-			return
-		} else if (args[1] == "healthbar") {
-			if (args.len()>2) {
-				::PVEShowBotHealth <- StringIsTruthy(args[2])
-				if (!PVEShowBotHealth) {
-					NetProps.SetPropInt(Entities.FindByClassname(null, "monster_resource"), "m_iBossHealthPercentageByte", 0)
-				}
-			} else {
-				ClientPrint(player, 3, args[0] + args[1] + " ! Missing parameter [bool] (currently " + (PVEShowBotHealth ? "true)" : "false)"))
 			}
 			return
 		} else if (args[1] == "botcount") {
@@ -4210,60 +4324,13 @@ RegisterCommand("!changelevel", function(player, args){
 ########################
 # PVE UPDATE FUNCTIONS #
 ########################
-::PVEUpdateTick <- true
-::PVEUpdate <- function() {
-	::PVEUpdateTick <- !PVEUpdateTick
-	if (PVEUpdateTick) return
-	PVECheckOptions()
-	if (PVEShowBotHealth)
-		PVEUpdateHealthbar()
-}
-
-::PVECheckOptions <- function() {
+RegisterEvent("teamplay_round_start", function(params){ # This should work as a trs handler
 	if (Convars.GetStr("mp_humans_must_join_team") == TEAM_NAMES[PVEBotTeam]) {
 		# the server changes this to red after round end on team switch
 		Convars.SetValue("mp_humans_must_join_team", TEAM_NAMES[PVEHumanTeam])
 		MoveTeamAll()
-	} else if (PVEOldPresetVoteSystem) {
-		if (Convars.GetInt("mp_autoteambalance") != 0) {
-			PVELoadClassConfig(PVEVoteOption1)
-			Convars.SetValue("mp_autoteambalance", 0)
-		} else if (Convars.GetInt("tf_classlimit") != 0) {
-			PVELoadClassConfig(PVEVoteOption2)
-			Convars.SetValue("tf_classlimit", 0)
-		} else if (Convars.GetInt("mp_maxrounds") != PVEMaxRounds) {
-			PVELoadClassConfig(PVEVoteOption3)
-			Convars.SetValue("mp_maxrounds", PVEMaxRounds)
-		}
 	}
-}
-RegisterEvent("teamplay_round_win", function(params) {
-	if (PVEDisabled) return
-	local gamerules = Entities.FindByClassname(null, "tf_gamerules")
-	RunNextStep(function(){
-		NetProps.SetPropBool(gamerules, "m_bSwitchTeams", false)
-		NetProps.SetPropBool(gamerules, "m_bScrambleTeams", false)
-	})
 })
-# experimental
-::PVEUpdateHealthbar <- function() {
-	local health = 0
-	local maxhealth = 0
-	for (local i = 1; i <= MaxPlayers; i++) {
-		local p = PlayerInstanceFromIndex(i)
-		if (p && p.GetTeam() == PVEBotTeam) {
-			health += p.GetHealth()
-			maxhealth += p.GetMaxHealth()
-		}
-	}
-	local health_bar = Entities.FindByClassname(null, "monster_resource") // Get the health bar entity.
-	if (health_bar){
-		if (health && maxhealth)
-			NetProps.SetPropInt(health_bar, "m_iBossHealthPercentageByte", 255 * health / maxhealth)
-		else
-			NetProps.SetPropInt(health_bar, "m_iBossHealthPercentageByte", 1)
-	}
-}
 ::PVEClassAmmoCounts <- [
 	[0   0   0   0 0 0 0], // undefined
 	[0  32  36 100 1 1 0], // scout
@@ -4308,6 +4375,7 @@ RegisterEvent("teamplay_round_win", function(params) {
 			# give a tf_weapon_builder for spy/engie
 			# do this 1 step later so they do not pull it out immedieately (prevent object increase)
 			if (!mm && p.GetPlayerClass() > 7) GivePlayerWeaponByID(p, p.GetPlayerClass() == 9 ? 28 : 735)
+			if (!mm && p.GetPlayerClass() == 8) GivePlayerWeaponByID(p, 27) # dont forget the disguise kit
 			# refill ammo from civilian values
 			if (!PVERemoveItemsUsingMedievalModeFallback) for (local i=0; i < 7; i++) {
 				NetProps.SetPropIntArray(p, "m_iAmmo", PVEClassAmmoCounts[c][i], i)
@@ -4585,51 +4653,35 @@ RegisterEvent("post_inventory_application", PVEPlayerPostInit)
         local heldWeapon = NetProps.GetPropEntityArray(player, "m_hMyWeapons", i)
         if (heldWeapon == null)
             continue
-		if (heldWeapon.GetClassname() != "tf_weapon_builder")
+		if (heldWeapon.GetClassname() != "tf_weapon_builder" && heldWeapon.GetClassname() != "tf_weapon_sapper")
 			continue
 		local scope = UTILGetScriptScope(heldWeapon)
-		local try_build = false
 		scope["think_pve_build_on_players"] <- function() {
-			local object = NetProps.GetPropEntity(self, "m_hObjectBeingBuilt")
-			if (object) {
-				NetProps.SetPropBool(object, "m_bDisposableBuilding", true)
-			}
-
             local buttons = NetProps.GetPropInt(player, "m_nButtons");
-			if (player.GetActiveWeapon() != self) {
-				try_build = false
-				return
-			}
-			if (try_build) {
-				# ForeachBot(function(b) {b.SetIsMiniBoss(true)})
-				# setting m_bPlayingMannVsMachine for a longer time crashes the game
-				# but flashing it should be fine
-				self.AddAttribute("robo sapper", 0, -1)
-				#NetProps.SetPropInt(self, "m_iObjectMode", 1) # MODE_SAPPER_ANTI_ROBOT
-				local gr = Entities.FindByClassname(null, "tf_gamerules")
-				NetProps.SetPropBool(gr, "m_bPlayingMannVsMachine", true)
-				self.PrimaryAttack()
-				NetProps.SetPropBool(gr, "m_bPlayingMannVsMachine", false)
-				#NetProps.SetPropInt(self, "m_iObjectMode", 0) # MODE_SAPPER_ANTI_ROBOT
-				try_build = false
-				RunNextStep(function(){
+			if (player.GetActiveWeapon() != self)
+				return -1
+			if ((buttons & Constants.FButtons.IN_ATTACK) != 0) {
+				local robo_sapper_value = self.GetAttribute("robo sapper", 0)
+				if (robo_sapper_value != 0) {
+					for (local e; e = Entities.FindByClassname(e, "obj_attachment_sapper");) {
+						NetProps.SetPropBool(e, "m_bDisposableBuilding", true)
+					}
 					NetProps.SetPropIntArray(player, "m_iAmmo", 5, 2) # TF_AMMO_GRENADES2
-					player.Weapon_Switch(heldWeapon)
-				})
-				NetProps.SetPropIntArray(player, "m_iAmmo", 5, 2) # TF_AMMO_GRENADES2
-				player.Weapon_Switch(self)
-				self.AddAttribute("robo sapper", 1, -1)
-			} else if ((buttons & Constants.FButtons.IN_ATTACK) != 0) {
-				if (self.GetAttribute("robo sapper", 0) != 0) {
+					self.AddAttribute("robo sapper", 0, -1)
+					local gr = Entities.FindByClassname(null, "tf_gamerules")
+					local mvm = IsMannVsMachineMode()
+					NetProps.SetPropBool(gr, "m_bPlayingMannVsMachine", true)
+					self.PrimaryAttack()
+					NetProps.SetPropBool(gr, "m_bPlayingMannVsMachine", mvm)
 					NetProps.SetPropIntArray(player, "m_iAmmo", 5, 2) # TF_AMMO_GRENADES2
+					self.AddAttribute("robo sapper", robo_sapper_value, -1)
+					for (local e; e = Entities.FindByClassname(e, "obj_attachment_sapper");) {
+						NetProps.SetPropBool(e, "m_bDisposableBuilding", true)
+					}
 					player.Weapon_Switch(self)
-					try_build = true
-					RunNextStep(function(){
-						NetProps.SetPropIntArray(player, "m_iAmmo", 5, 2) # TF_AMMO_GRENADES2
-						player.Weapon_Switch(heldWeapon)
-					})
 				}
 			}
+			return -1
 		}
 		AddThinkToEnt(heldWeapon, "think_pve_build_on_players")
 	}
@@ -4693,12 +4745,14 @@ if (!("PVEWasCp" in getroottable())){ # keep value between reloads
 	::PVEWasCp <- PVEWasCp || NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") == 2
 }
 
-::PVESetupOnce <- false
 # required by cp_freaky_fair
 ::PVEMapMirrored <- false
 ::PVESetup <- function(params)
 {
-	if ("full_reset" in params) ::PVEStartTime <- Time()
+	if ("full_reset" in params){
+		::PVEStartTime <- Time()
+		return // the rest is handled in MapResetPrePoints
+	}
 	if (!PVEInitialized || IsInWaitingForPlayers() || GetRoundState() <= 1) return;
 	if (PVEResetBotsOnRoundStart) {
 		ForeachBot(function(p) {
@@ -4709,7 +4763,9 @@ if (!("PVEWasCp" in getroottable())){ # keep value between reloads
 	local flag_blu = null
 	for (local entity; entity = Entities.FindByClassname(entity, "Item_teamflag");) {
 		flag_count++
-		if (entity.GetTeam() == (PVEDisableCtfREDSwapTeam ? TEAM_DEFEND : TEAM_ATTACK)) {
+		local flagtype = NetProps.GetPropInt(entity, "m_nType")
+		// remember the flag humans cant pick up
+		if (entity.GetTeam() == ((flagtype != 0 /*CTF*/ && flagtype != 5 /*RD*/) ? TEAM_DEFEND : TEAM_ATTACK)) {
 			flag_blu = entity
 		}
 	}
@@ -4727,125 +4783,57 @@ if (!("PVEWasCp" in getroottable())){ # keep value between reloads
 		temp += 1
 	}
 	if (temp == 1) is_koth = true;
+	if (GetMapName() == "cp_cloak") is_koth = true;
 	if (PVEWasCp && !is_koth && !PVEMedievalEnabledByDefault && !IsAttackDefenseMode() && !IsInArenaMode()) {
 		# prevent red wins on 3/5cp maps
 		local multiround = false
 		for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-			entity.KeyValueFromInt("cpm_restrict_team_cap_win", 1)
+			NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 1)
 		}
 		for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_round");) {
-			entity.KeyValueFromInt("cpr_restrict_team_cap_win", 2)
+			NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 2)
 			multiround = true
 		}
-		#for (local e; e = Entities.FindByClassname(e, "trigger_capture_area");) {
-		#	EntFireByHandle(e, "SetTeamCanCap", "2 0", 10.0, null, null)
-		#}
 		# only change points to red if there is a single round (e.g.) not on hydro/dustbowl
 		if (!multiround && PVENextPointCapForceLinear) RunDelayed(function() {
 			::MapReplaceUnlockedPoint <- null
 			local lowest_index = 999
 			local lowest_point = null
+			local lowest_point_team = 0
 			local highest_index = -1
 			local highest_point = null
+			local highest_point_team = 0
 			local points = {}
 			for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-				#printl(e)
-				#print("group:")
-				#print(NetProps.GetPropInt(e, "m_iCPGroup"))
-				#print("index:")
 				local index = NetProps.GetPropInt(e, "m_iPointIndex")
 				if (index < lowest_index) {
 					lowest_index = index
 					lowest_point = e
+					lowest_point_team = e.GetTeam()
 				}
 				if (index > highest_index) {
 					highest_index = index
 					highest_point = e
+					highest_point_team = e.GetTeam()
 				}
 				points[index] <- e
-				#e.KeyValueFromInt("point_default_owner", TEAM_RED)
-				#e.DispatchSpawn()
-				EntFireByHandle(e, "setowner", "3", 6 - index * 0.1, e, e)
-				EntFireByHandle(e, "setowner", "2", 6.1 - index * 0.1, e, e)
-				/*
-				# locking only works from 5 seconds into the match and upward
-				if (PVENextPointCapForceLinear) {
-					#(e, "SetUnlockTime", "1", 10 - index * 0.1, e, e)
-					EntFireByHandle(e, "setlocked", "1", 13 - index * 0.1, e, e)
-				}
-				*/
 			}
-			/*
-			if (!PVESetupOnce)
-				RegisterEvent("teamplay_point_unlocked", function(params) {
-					for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-						if (e == MapReplaceUnlockedPoint) continue
-						if (params.cp == NetProps.GetPropInt(e, "m_iPointIndex") && PVEFakeSetupTimeStart != 0) {
-							if (PVENextPointCapForceLinear)
-								EntFireByHandle(e, "setlocked", "1", 0, e, e)
-						}
-					}
-				})
-			*/
-			# script EntFire("func_areaportal", "Open", "", 0, null)
-			if (lowest_point == highest_point) {
-
-			} else if (lowest_point && lowest_point.GetTeam() == PVEHumanTeam) {
+			if (lowest_point == highest_point) {} else if (lowest_point && lowest_point_team == PVEHumanTeam) {
 				for (local i = highest_index-1; i >= lowest_index; i--) {
 					local current = points[i]
 					local next = points[i+1]
-					if (!PVESetupOnce) {
-						PVELockPointForTeam(current.GetName(), PVEBotTeam)
-						#PVELockPointForTeam(next.GetName(), PVEBotTeam)
-						PVEAddRequiredHumanPointCapture(next.GetName(), current.GetName())
-					}
+					PVEAddRequiredHumanPointCapture(next.GetName(), current.GetName())
 				}
 				PVEClearRequiredHumanPointCapture(lowest_point.GetName())
-			} else if (highest_point && highest_point.GetTeam() == PVEHumanTeam) {
+			} else if (highest_point && highest_point_team == PVEHumanTeam) {
 				for (local i = lowest_index; i < highest_index; i++) {
 					local next = points[i]
 					local current = points[i+1]
-					if (!PVESetupOnce) {
-						PVELockPointForTeam(current.GetName(), PVEBotTeam)
-						#PVELockPointForTeam(next.GetName(), PVEBotTeam)
-						PVEAddRequiredHumanPointCapture(next.GetName(), current.GetName())
-					}
+					PVEAddRequiredHumanPointCapture(next.GetName(), current.GetName())
 				}
 				PVEClearRequiredHumanPointCapture(highest_point.GetName())
-			} else {
-				//printl("TEST")
 			}
-
-			::PVESetupOnce <- true
-			/*
-			if (PVENextPointCapForceLinear && lowest_point && lowest_point.GetTeam() == TEAM_ATTACK) {
-				EntFireByHandle(lowest_point, "setlocked", "0", 20, lowest_point, lowest_point)
-				::MapReplaceUnlockedPoint <- lowest_point
-			}
-			if (PVENextPointCapForceLinear && highest_point && highest_point.GetTeam() == TEAM_ATTACK){
-				::PVEMapMirrored <- true
-				EntFireByHandle(highest_point, "setlocked", "0", 20, highest_point, highest_point)
-				::MapReplaceUnlockedPoint <- highest_point
-			}
-			// */
-			# this respawns bots after point modifications on maps without
-			# setup time (only symmetrical cp maps) so they can use forward spawns
-			RunInNSeconds(7, function() {
-				local has_timer = false
-				for (local e = null; e = Entities.FindByClassname(e, "team_round_timer");) {
-					has_timer = true
-					if (NetProps.GetPropInt(e, "m_nSetupTimeLength") != 0) continue
-					has_timer = false
-					break
-				}
-				if (!has_timer) {
-					ForeachBot(function(p) {
-						RunDelayed(function(){
-							UTILRespawn(p)
-						})
-					})
-				}
-			})
+			EntFire("trigger_capture_area", "SetTeamCanCap", PVEBotTeam.tostring() + " 0", 1, null)
 		})
 	}
 	if (PVEPayloadSpeedLimit == -1 || NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") != 3) { # TF_GAMETYPE_ESCORT
@@ -4856,16 +4844,21 @@ if (!("PVEWasCp" in getroottable())){ # keep value between reloads
 			NetProps.SetPropFloat(e, "m_flAccelSpeed", PVEPayloadSpeedLimit.accelspeed)
 			NetProps.SetPropFloat(e, "m_maxSpeed", PVEPayloadSpeedLimit.maxspeed)
 		}
+		Convars.SetValue("tf_escort_recede_time", PVEPayloadSpeedLimit.rollbackdelay)
+		EntFire("team_train_watcher", "SetTrainRecedeTimeAndUpdate", "0", 1, null)
 	} else if ("payload_speed_limit" in PVECurrentClass && PVECurrentClass.payload_speed_limit != null) {
 		for (local e = null; e = Entities.FindByClassname(e, "func_tracktrain");) {
 			if (NetProps.GetPropString(e, "m_iszSoundStart") != "Cart.RollStart") continue;
 			NetProps.SetPropFloat(e, "m_flAccelSpeed", PVECurrentClass.payload_speed_limit.accelspeed)
 			NetProps.SetPropFloat(e, "m_maxSpeed", PVECurrentClass.payload_speed_limit.maxspeed)
 		}
+		Convars.SetValue("tf_escort_recede_time", PVECurrentClass.payload_speed_limit.rollbackdelay)
+		EntFire("team_train_watcher", "SetTrainRecedeTimeAndUpdate", "0", 1, null)
 	}
 }
 RegisterEvent("teamplay_setup_finished", PVESetup)
 RegisterEvent("teamplay_round_start", PVESetup)
+RegisterEvent("MapResetPrePoints", PVESetup)
 
 RegisterEvent("teamplay_point_captured", function(params) {
 	if (PVEInitialized && PVEResetBotsOnCapturedPoint)
@@ -4892,19 +4885,7 @@ RegisterEvent("teamplay_point_captured", function(params) {
 			break;
 		}
 	}
-	/*
-	if (PVEWasCp && !IsInKothMode() && !PVEMedievalEnabledByDefault && !IsAttackDefenseMode() && NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") == 2) { # TF_GAMETYPE_CP
-		#printl(params.cp)
-		for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-			if (params.cp == NetProps.GetPropInt(e, "m_iPointIndex")) {
-				#rint(e)
-				EntFireByHandle(e, "SetTeamCanCap", "2 0", 0.1, e, e)
-				EntFireByHandle(e, "SetLocked", "1", 0.2, e, e)
-				ForeachBot(function(b){ b.RemoveAllObjects(true) })
-			}
-		}
-	}
-	*/
+	if (GetMapName() == "cp_cloak") is_koth = true;
 	local temp = 0
 	for (local e; e = Entities.FindByClassname(e, "team_control_point");){
 		temp += 1
@@ -4914,34 +4895,17 @@ RegisterEvent("teamplay_point_captured", function(params) {
 		local foundbiggerindex = false
 		for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
 			local index = NetProps.GetPropInt(e, "m_iPointIndex")
-			if (PVEBlockNextPointCapDelay != 0) {
-				EntFireByHandle(e, "setlocked", "1", 1, e, e)
-				if (!PVEMapMirrored && params.cp+1==index) {
-					EntFireByHandle(e, "SetUnlockTime", format("%d", PVEBlockNextPointCapDelay), 1, e, e)
-					foundbiggerindex = true
-				} else if (PVEMapMirrored && params.cp-1==index) {
-					EntFireByHandle(e, "SetUnlockTime", format("%d", PVEBlockNextPointCapDelay), 1, e, e)
-					foundbiggerindex = true
-				}
-			} else {
-				if (!PVEMapMirrored && params.cp+1==index) {
-					EntFireByHandle(e, "setlocked", "0", 0, e, e)
-					foundbiggerindex = true
-				} else if (PVEMapMirrored && params.cp-1==index) {
-					EntFireByHandle(e, "setlocked", "0", 0, e, e)
-					foundbiggerindex = true
-				}
-				else
-					EntFireByHandle(e, "setlocked", "1", 0, e, e)
+			if (!PVEMapMirrored && params.cp+1==index) {
+				foundbiggerindex = true
+			} else if (PVEMapMirrored && params.cp-1==index) {
+				foundbiggerindex = true
 			}
 		}
 		if (!foundbiggerindex) {
-			Entities.FindByClassname(null, "team_control_point_master").KeyValueFromInt("cpm_restrict_team_cap_win", 2)
-			#EntFireByHandle(e, "setowner", "3", 1, e, e)
-			#EntFireByHandle(e, "setowner", "2", 2, e, e)
+			NetProps.SetPropInt(Entities.FindByClassname(null, "team_control_point_master"), "m_iInvalidCapWinner", 2)
 		}
 	} else {
-		Entities.FindByClassname(null, "team_control_point_master").KeyValueFromInt("cpm_restrict_team_cap_win", 2)
+		NetProps.SetPropInt(Entities.FindByClassname(null, "team_control_point_master"), "m_iInvalidCapWinner", 2)
 	}
 })
 
@@ -4952,7 +4916,7 @@ RegisterEvent("teamplay_point_captured", function(params) {
 if (PVEDoNotAggroOnHealthbar) RegisterEvent("Update", function(params){
 	if (!PVEDoNotAggroOnHealthbar) return
 	local boss_active = NetProps.GetPropInt(Entities.FindByClassname(null, "monster_resource"), "m_iBossHealthPercentageByte") != 0
-	if (boss_active && !PVEShowBotHealth) ForeachBot(function(p) { p.SetBehaviorFlag(PVEDoNotAggroOnHealthbarFlags) })
+	if (boss_active) ForeachBot(function(p) { p.SetBehaviorFlag(PVEDoNotAggroOnHealthbarFlags) })
 	else ForeachBot(function(p) { p.ClearBehaviorFlag(PVEDoNotAggroOnHealthbarFlags) })
 })
 
@@ -4964,6 +4928,7 @@ if (PVEDoNotAggroOnHealthbar) RegisterEvent("Update", function(params){
 ::PVETimerRef <- null
 ::PVEAddTimer <- false # forcefully create a timer if it does not exist
 ::PVETimerRefStepSize <- 0
+::PVEDontCountUp <- false # prevent timer modification
 RegisterEvent("teamplay_round_start", function(params) {
 	if ("full_reset" in params && params.full_reset != 0) ::PVEDisplayTime <- Time()
 	if (PVEAddTimer) {
@@ -4977,8 +4942,9 @@ RegisterEvent("teamplay_round_start", function(params) {
 RegisterEvent("teamplay_setup_finished", function(params) {
 	::PVEDisplayTime <- PVEDisplayTime + NetProps.GetPropInt(PVETimerRef, "m_nSetupTimeLength")
 })
+::PVETimerUpdateRate <- 0.5
 RegisterEvent("Update", function(params) {
-	if (!(PVERunning || PVEJustCountUp) || IsInWaitingForPlayers() || GetRoundState() != 4 /* GR_STATE_RND_RUNNING */) return
+	if (!(PVERunning || PVEJustCountUp) || IsInWaitingForPlayers() || GetRoundState() != 4 /* GR_STATE_RND_RUNNING */ || PVEDontCountUp) return
 	# only count up if attacking
 	# -> this allows defending humans to win
 	if (PVEHumanTeam == TEAM_DEFEND) return;
@@ -5058,7 +5024,6 @@ RegisterEvent("Update", function (params) {
 	if (PVEState == 3 && bc == PVEBotCount) {
 		::PVEBotCountReached <- true
 		// do not check for the other conditions if everything has been initialized already
-		PVEUpdate()
 	} else if (PVEState == 0) {
 		::PVEBotCountReached <- false
 		::PVEState <- 1
@@ -5331,14 +5296,22 @@ if (PVEIsOnDedicatedServer && PVEForceDisable && !PVEMaintenanceMode) {
 }
 
 # experimental: mvm upgrades in PVE
-# TODO: rebalance
+# TODO: add config/enum for individual counter, global counter and team counters
+# TODO: add config to exclude kills earned by bots from counting towards global pool
 if (true) {
+	enum CurrencyMode {
+		GLOBAL,
+		TEAM,
+		INDIVIDUAL,
+	}
 	if (!("mvm" in PVEClassOptions)) PVEClassOptions.mvm <- PVEClassOptions[PVEDefaultClass]
 	# setup
 	::PVEMvmUpgrades <- null
 	::PVERefundOnClassChange <- true
 	::PVEQuickbuildWhileSetup <- true
 	::PVEExtendSetupTime <- false
+	::PVECurrencyMode <- CurrencyMode.GLOBAL
+	::PVECurrencyIgnoreBots <- false # do not make bot caused events contribute
 	::PVECurrencyOnSpawn <- 4000 # 999999 # 4000 # 1000
 	::PVECurrencyOnKill <- 4 # 5 # 15
 	::PVECurrencyOnDestruction <- 3
@@ -5346,10 +5319,13 @@ if (true) {
 	::PVECurrencyOnDeath <- 0 # 50
 	::PVECurrencyOnPayload <- 1 # 3
 	::PVECurrencyFactor <- 1
+	::PVECurrencyLimit <- 0 # set to 0 to disable
 	::PVEMvmSetupTimeFactor <- 90
 	::PVEMvmSetupTimeIsAbsolute <- false
 	::PVEMvmTimeGainLimitFactor <- 0
 	::PVEAllowUpgradeHealthTrickery <- true
+	::PVECurrencyTeam2 <- 0 # additional money for red
+	::PVECurrencyTeam3 <- 0 # additional money for blue
 	::PVEShouldUpgradesBeEnabled <- function() {
 		if (IsInWaitingForPlayers()) return false
 		if (PVEMvmUpgrades != null) return PVEMvmUpgrades
@@ -5368,20 +5344,96 @@ if (true) {
 		/* medic */ 1 /* heavyweapons */ 1 /* pyro */ 1 /* spy */ 1 /* engineer */ 1
 		/* civilian */ 1
 	]
-	::PVEGiveCurrency <- function(ammount, player = null) {
-		local ammunt_to_give = ammount * PVECurrencyFactor * PVEUpgradeCurrencyGiveFactorPerClass[(player && player.IsValid()) ? player.GetPlayerClass() : 0]
-		ForeachPlayer(function(p) {
-			p.SetCurrency(p.GetCurrency() + ammunt_to_give * PVEUpgradeCurrencyFactorPerClass[p.GetPlayerClass()])
-		})
-		::PVECurrencyOnSpawn <- PVECurrencyOnSpawn + ammunt_to_give
+	# normal ammount for refunds (max player can have)
+	::PVEGetCurrencyForPlayer <- function(player) {
+		if (!player || !player.IsValid()) return 0;
+		local ammount = 0
+		switch (PVECurrencyMode) {
+			case CurrencyMode.TEAM:
+				ammount = player.GetTeam() == 2 ? PVECurrencyTeam2 : PVECurrencyTeam3
+				ammount += PVECurrencyOnSpawn
+			break;
+			case CurrencyMode.INDIVIDUAL:
+				ammount = UTILGetScriptScope(player).__PVE_CURRENCY__
+			break;
+			case CurrencyMode.GLOBAL:
+			default:
+				ammount = PVECurrencyOnSpawn
+			break;
+		}
+		ammount *= PVEUpgradeCurrencyFactorPerClass[player.GetPlayerClass()]
+
+		if (PVECurrencyLimit) {
+			ammount = ammount > PVECurrencyLimit ? PVECurrencyLimit : ammount
+		}
+		return ammount
 	}
-	# multistage map money fix
+	::PVEGiveCurrency <- function(ammount, player = null) {
+		// NOTE: increasing PVECurrencyOnSpawn is nessecary for progressive bot upgrades
+		local ammunt_to_give = ammount * PVECurrencyFactor * PVEUpgradeCurrencyGiveFactorPerClass[(player && player.IsValid()) ? player.GetPlayerClass() : 0]
+		if (player == null || PVECurrencyMode == CurrencyMode.GLOBAL) { # global money
+			ForeachPlayer(function(p) {
+				# emergency fix
+				# script ForeachPlayer(function(p){UTILGetScriptScope(p).__PVE_CURRENCY__ <- PVECurrencyOnSpawn})
+				local s = UTILGetScriptScope(p)
+				if (!("__PVE_CURRENCY__" in s)) s.__PVE_CURRENCY__ <- PVECurrencyOnSpawn # todo: move this check to player_spawn / connect
+				if (!p.IsFakeClient()) s.__PVE_CURRENCY__ += ammunt_to_give
+				local new_currency = p.GetCurrency() + ammunt_to_give * PVEUpgradeCurrencyFactorPerClass[p.GetPlayerClass()]
+				p.SetCurrency((!!PVECurrencyLimit && new_currency > PVECurrencyLimit) ? PVECurrencyLimit : new_currency)
+			})
+			::PVECurrencyOnSpawn <- PVECurrencyOnSpawn + ammunt_to_give
+			return
+		} else if (PVECurrencyMode == CurrencyMode.TEAM) {
+			::PVECurrencyOnSpawn <- PVECurrencyOnSpawn + ammunt_to_give / 2
+			::PVECurrencyTeam2 <- PVECurrencyTeam2 + play
+			local team = player.GetTeam()
+			if (team == 2) {
+				::PVECurrencyTeam2 <- PVECurrencyTeam2 + ammunt_to_give / 2
+				::PVECurrencyTeam3 <- PVECurrencyTeam3 - ammunt_to_give / 2
+			} else {
+				::PVECurrencyTeam2 <- PVECurrencyTeam2 - ammunt_to_give / 2
+				::PVECurrencyTeam3 <- PVECurrencyTeam3 + ammunt_to_give / 2
+			}
+			ForeachPlayer(function(p) {
+				if (p.GetTeam() != team) return;
+				local s = UTILGetScriptScope(p)
+				if (!("__PVE_CURRENCY__" in s)) s.__PVE_CURRENCY__ <- PVECurrencyOnSpawn # todo: move this check to player_spawn / connect
+				if (!p.IsFakeClient()) s.__PVE_CURRENCY__ += ammunt_to_give
+				local new_currency = p.GetCurrency() + ammunt_to_give * PVEUpgradeCurrencyFactorPerClass[p.GetPlayerClass()]
+				p.SetCurrency((!!PVECurrencyLimit && new_currency > PVECurrencyLimit) ? PVECurrencyLimit : new_currency)
+			})
+		} else if (PVECurrencyMode == CurrencyMode.INDIVIDUAL) {
+			# NOTE: GetHumanCount is not the most performant
+			# TODO: change for something more performant
+			::PVECurrencyOnSpawn <- PVECurrencyOnSpawn + ammunt_to_give / GetHumanCount()
+			local new_currency = player.GetCurrency() + ammunt_to_give * PVEUpgradeCurrencyFactorPerClass[player.GetPlayerClass()]
+			player.SetCurrency((!!PVECurrencyLimit && new_currency > PVECurrencyLimit) ? PVECurrencyLimit : new_currency)
+		} else {
+			// UNHANDLED ENUM VALUE, THIS SHOULD NOT EVEN BE REACHABLE
+		}
+	}
 	::PVESetCurrencyOnceChecked <- []
+	# setup all variables for money
 	::PVESetCurrencyOnce <- function(p) {
 		if (!p || !p.IsValid() || p.IsFakeClient() || !PVEShouldUpgradesBeEnabled()) return;
 		foreach (player in PVESetCurrencyOnceChecked) if (p == player) return
 		PVESetCurrencyOnceChecked.push(p)
-		p.SetCurrency(PVECurrencyOnSpawn * PVEUpgradeCurrencyFactorPerClass[p.GetPlayerClass()])
+		local s = UTILGetScriptScope(p)
+		s.__PVE_CURRENCY__ <- PVECurrencyOnSpawn
+		# give the average of the money everybody already has
+		if (PVECurrencyMode == CurrencyMode.INDIVIDUAL) {
+			local total = 0
+			local count = 0
+			ForeachHuman(function(h) {
+				total += UTILGetScriptScope(h).__PVE_CURRENCY__
+				count += 1
+			})
+			local average = total / count
+			if (average > PVECurrencyOnSpawn) {
+				s.__PVE_CURRENCY__ = average
+			}
+		}
+		p.SetCurrency(PVEGetCurrencyForPlayer(p))
 	}
 	# clear disconnected players from currency list
 	RegisterEvent("player_disconnect", function(params) {
@@ -5400,19 +5452,21 @@ if (true) {
 		# refund upgrades on class change
 		if (PVEShouldUpgradesBeEnabled() && PVERefundOnClassChange /* && params.team == PVEHumanTeam */) {
 			local p = GetPlayerFromUserID(params.userid)
-			if (!(p && p.IsValid() && !p.IsFakeClient() && p.GetTeam() == PVEHumanTeam)) return
+			if (!(p && p.IsValid() && !p.IsFakeClient() && (p.GetTeam() == PVEHumanTeam || PVEScrambled))) return
 			local s = UTILGetScriptScope(p)
 			if (!("__PVE_REFUND_ITEM_LIST__" in s)) {
 				s.__PVE_REFUND_ITEM_LIST__ <- []
 			} else for (local i = 0; i < MAX_WEAPONS; i++) {
 				local heldWeapon = NetProps.GetPropEntityArray(p, "m_hMyWeapons", i)
-				if (heldWeapon && heldWeapon.IsValid() && s.__PVE_REFUND_ITEM_LIST__.find(heldWeapon) == null)
+				if (heldWeapon && heldWeapon.IsValid() && s.__PVE_REFUND_ITEM_LIST__.find(heldWeapon) == null) {
 					RunDelayedForPlayer(p, function(){
 						ClientPrint(p, 4, "Your upgrades have been refunded.")
 						p.GrantOrRemoveAllUpgrades(true, true)
 						p.GrantOrRemoveAllUpgrades(true, false)
-						p.SetCurrency(PVECurrencyOnSpawn * PVEUpgradeCurrencyFactorPerClass[p.GetPlayerClass()])
+						p.SetCurrency(PVEGetCurrencyForPlayer(p))
 					})
+					break;
+				}
 			}
 			s.__PVE_REFUND_ITEM_LIST__.clear()
 			for (local i = 0; i < MAX_WEAPONS; i++) {
@@ -5424,7 +5478,8 @@ if (true) {
 	})
 
 	::PVEUpgradeMobsterFix <- false
-	::PVEUpgradeIncludeSpawnrooms <- false
+	if (!("PVEUpgradeIncludeSpawnrooms" in getroottable()))
+		::PVEUpgradeIncludeSpawnrooms <- false
 	::PVEMadeUpgradestations <- []
 	::PVEAddUpgradeFN <- function(params={}) {
 		if (!PVEShouldUpgradesBeEnabled()) return
@@ -5504,6 +5559,13 @@ if (true) {
 		foreach (e in PVEMadeUpgradestations)
 			if (e && e.IsValid()) e.Kill()
 		PVEMadeUpgradestations.clear()
+		if (true) { // TEMP CRASH FIX ATTEMPT (does this do anything or were the crashes from something else?)
+			local e = Entities.CreateByClassname("func_upgradestation")
+			e.DispatchSpawn() # Set a valid upgrade entity for respawning players
+			e.SetSolid(0) # remove error message
+			NetProps.SetPropString(e, "m_iClassname", "tf_logic_training") # also unused (ugly patch for now)
+			PVEMadeUpgradestations.push(e)
+		}
 		ForeachPlayer(function(p) {
 			p.GrantOrRemoveAllUpgrades(true, true)
 		})
@@ -5518,9 +5580,9 @@ if (true) {
 		if ("attacker" in params) killer = GetPlayerFromUserID(params.attacker)
 		if ("assister" in params) assister = GetPlayerFromUserID(params.assister)
 		if (dead==killer) return
-		if (killer && killer.IsValid()) PVEGiveCurrency(PVECurrencyOnKill, killer)
+		if (killer && killer.IsValid() && !(PVECurrencyIgnoreBots && killer.IsFakeClient())) PVEGiveCurrency(PVECurrencyOnKill, killer)
 		if (dead && dead.IsValid()) PVEGiveCurrency(PVECurrencyOnDeath, dead)
-		if (assister && assister.IsValid()) PVEGiveCurrency(PVECurrencyOnAssist, assister)
+		if (assister && assister.IsValid() && !(PVECurrencyIgnoreBots && killer.IsFakeClient())) PVEGiveCurrency(PVECurrencyOnAssist, assister)
 	})
 	RegisterEvent("object_destroyed", function(params) {
 		if (!PVEShouldUpgradesBeEnabled()) return
@@ -5528,13 +5590,13 @@ if (true) {
 		if ("team" in params && params.team != PVEBotTeam) return
 		if ("attacker" in params) killer = GetPlayerFromUserID(params.attacker)
 		if ("assister" in params) assister = GetPlayerFromUserID(params.assister)
-		if (killer && killer.IsValid()) PVEGiveCurrency(PVECurrencyOnDestruction, killer)
-		if (assister && assister.IsValid()) PVEGiveCurrency(PVECurrencyOnAssist, assister)
+		if (killer && killer.IsValid() && !(PVECurrencyIgnoreBots && killer.IsFakeClient())) PVEGiveCurrency(PVECurrencyOnDestruction, killer)
+		if (assister && assister.IsValid() && !(PVECurrencyIgnoreBots && killer.IsFakeClient())) PVEGiveCurrency(PVECurrencyOnAssist, assister)
 	})
 	RegisterEvent("payload_pushed", function(params) {
 		if (!PVEShouldUpgradesBeEnabled()) return
 		local player = GetPlayerFromUserID(params.pusher)
-		if (!player || !player.IsValid()) return
+		if (!player || !player.IsValid() || (PVECurrencyIgnoreBots && player.IsFakeClient())) return
 		PVEGiveCurrency(PVECurrencyOnPayload * params.distance, player)
 	})
 	# commands
@@ -5618,14 +5680,14 @@ if (true) {
 			// do not change existing building health
 			for (local e; e = Entities.FindByClassname(e, "obj_*");) {
 				if (NetProps.GetPropEntity(e, "m_hBuilder") == p) {
-					local upvalue_fix = e // make local variable against upvalues
+					local upvalue_fix = e // make variable local against upvalue issues
 					local bh = upvalue_fix.GetHealth()
-					local mh = upvalue_fix.GetMaxHealth()
+					#local mh = upvalue_fix.GetMaxHealth()
 					RunNextStep(function(){
-						//mh = upvalue_fix.GetMaxHealth() < mh ? upvalue_fix.GetMaxHealth() : mh
-						upvalue_fix.SetHealth(bh)
-						//upvalue_fix.SetHealth(mh > bh ? bh : mh)
-						upvalue_fix.SetMaxHealth(mh)
+						if (!upvalue_fix || !upvalue_fix.IsValid()) return;
+						#local nmh = upvalue_fix.GetMaxHealth()
+						local nbh = upvalue_fix.GetHealth()
+						if (bh < nbh) upvalue_fix.AcceptInput("RemoveHealth", (nbh-bh).tostring(), upvalue_fix, upvalue_fix)
 					})
 				}
 			}
@@ -5940,61 +6002,6 @@ RegisterCommand("!dbgfm", function(player, args) {
 	}
 }, " [ETFBotMissionType] - set bot mission (permanent) (all bots)")
 
-# stealth team swap (this is way too dumb)
-# this does not update some network variables so it breaks :(
-# just use "pve join" (this here idea may be replaced with something dumber in the future)
-if (false) {
-	RegisterEvent("player_changeclass", function(params) {
-		local p = GetPlayerFromUserID(params.userid)
-        local id = NetProps.GetPropString(user, "m_szNetworkIDString")
-		local allowed = false
-		foreach (validid in SteamIDWhitelist) {
-			if ( id == validid) allowed = true
-		}
-		if (!allowed) return
-		#if (!p || !p.IsValid() || p.IsFakeClient() || !PVERunning) return
-		#if (params["class"] != 8) return # spy only
-		RunDelayedForPlayer(p, function() {
-			RunDelayedForPlayer(p, function() {
-				RunDelayedForPlayer(p, function() {
-					local buttons = NetProps.GetPropInt(p, "m_nButtons");
-					/* move left forwards and right*/
-					if (buttons == 1544) {
-						p.ForceChangeTeam(PVEBotTeam, true)
-						p.ForceRegenerateAndRespawn()
-					}
-				})
-			})
-		})
-	})
-}
-
-# todo: make preset specific? (or just remove again)
-# probably do the latter if you are still unsure, it has been over a month now
-# + equipping a new grappling hook every resupply might have a negative impact on edict counts or the refund system
-::PVEGiveGrapple <- false
-if (PVEGiveGrapple) RegisterEvent("post_inventory_application", function(params) {
-	if (!PVEGiveGrapple) return;
-	Convars.SetValue("tf_grapplinghook_enable", true)
-	local p = GetPlayerFromUserID(params.userid)
-	if (!p || !p.IsValid()) return
-	if (p.IsFakeClient()) {
-		// remove existing weapon in same slot
-		for (local i = 0; i < MAX_WEAPONS; i++)
-		{
-			local heldWeapon = NetProps.GetPropEntityArray(p, "m_hMyWeapons", i)
-			if (heldWeapon == null)
-				continue
-			if (heldWeapon.GetSlot() != 5)
-				continue
-			heldWeapon.Destroy()
-			NetProps.SetPropEntityArray(p, "m_hMyWeapons", null, i)
-			break
-		}
-	} else if (!Convars.GetBool("tf_grapplinghook_enable")) {
-		GivePlayerWeaponByID(p, 1152)
-	}
-})
 
 RegisterEvent("teamplay_round_start", function(params) {
 	local old_atk = TEAM_ATTACK
@@ -6292,130 +6299,89 @@ RegisterEvent("teamplay_round_active", function(params) {
 	})
 })
 
-::CPMRequireReset <- false
-::PVEAddRequiredHumanPointCapture <- function(point_to_add_to, point_to_add) {
-	#printf("%s requires %s\n", point_to_add_to, point_to_add)
-	function temp(params) {
-		if (PVEDisabled) return;
-		::CPMRequireReset <- true
-		RunDelayed(function(){
-			for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-				if (e.GetName() == point_to_add_to) {
-					e.KeyValueFromString("team_previouspoint_3_0", point_to_add)
-					e.KeyValueFromString("team_previouspoint_3_1", "")
-					e.KeyValueFromString("team_previouspoint_3_2", "")
-				}
-			}
-		})
+const MAX_PREVIOUS_POINTS = 3
+const MAX_CONTROL_POINTS = 8
+::PVEHookedPoints <- {}
+::PVEAddRequiredHumanPointCapture <- function(point_, prev_point_, team = 3) {
+	local point__ = point_
+	local prev_point__ = prev_point_
+	local hooked = false
+	if (typeof(point_) == "string" && typeof(prev_point_) == "string") {
+		local name = point_ + prev_point_
+		hooked = name in PVEHookedPoints && PVEHookedPoints[name]
+		PVEHookedPoints[name] <- true
 	}
-	RegisterEvent("teamplay_round_start", temp)
-	temp({})
-}
-::PVEClearRequiredHumanPointCapture <- function(point_to_add_to) {
-	#printf("clearing %s\n", point_to_add_to)
 	function temp(params) {
 		if (PVEDisabled) return;
-		::CPMRequireReset <- true
-		RunDelayed(function(){
-			for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-				if (e.GetName() == point_to_add_to) {
-					e.KeyValueFromString("team_previouspoint_3_0", point_to_add_to)
-					e.KeyValueFromString("team_previouspoint_3_1", "")
-					e.KeyValueFromString("team_previouspoint_3_2", "")
-				}
-			}
-		})
-	}
-	RegisterEvent("teamplay_round_start", temp)
-	temp({})
-}
-::PVELockPointForTeam <- function(point_to_lock, team_to_lock_for) {
-	#printf("locking %s for %s", point_to_lock, ["NEUTRAL", "SPECTATOR", "RED", "BLU"][team_to_lock_for])
-	local registered = false
-	function temp(params) {
-		if (PVEDisabled) return;
-		::CPMRequireReset <- true
-		RunDelayed(function(){
-			for (local e; e = Entities.FindByClassname(e, "team_control_point");) {
-				local pointname = e.GetName()
-				#printl(pointname)
-				if (e.GetName() == point_to_lock) {
-					# lock for defending team
-					e.KeyValueFromString("team_previouspoint_" + team_to_lock_for.tostring() + "_0", "")
-					e.KeyValueFromString("team_previouspoint_" + team_to_lock_for.tostring() + "_1", "")
-					e.KeyValueFromString("team_previouspoint_" + team_to_lock_for.tostring() + "_2", "")
-					# set team to defending team
-					e.KeyValueFromInt("point_default_owner", team_to_lock_for)
-					e.DispatchSpawn()
 
-					# fix visuals (this took way too much effort)
-					RunInNSeconds(8, function(){
-							# control point outputs
-							foreach (output in ["OnRoundStartOwnedByTeam" "OnOwnerChangedToTeam" "OnCapTeam"]) {
-								local o = output + (team_to_lock_for - 1).tostring()
-								#print(EntityOutputs.HasOutput(e, o))
-								local count = EntityOutputs.GetNumElements(e, o)
-								#print(e)
-								#print(o)
-								#print(":")
-								#printl(count)
-								for (local i=0; i < count; i++) {
-									local table = {}
-									EntityOutputs.GetOutputTable(e, o, table, i)
-									EntFire(table.target, table.input, table.parameter, table.delay, e)
-									#printf("%s %s %s %d %s\n", table.target, table.input, table.parameter, table.delay, e.tostring())
-								}
-						}
-						# capture area outputs
-						for (local ent = null; ent = Entities.FindByClassname(ent, "trigger_capture_area");){
-							local cap_point_name = NetProps.GetPropString(ent, "m_iszCapPointName")
-							if (cap_point_name == pointname) {
-								foreach (output in ["OnStartCap" "OnStartTeam" + (team_to_lock_for - 1).tostring() "OnEndCap" "OnCapTeam" + (team_to_lock_for - 1).tostring()]) {
-									local o = output
-									#print(EntityOutputs.HasOutput(ent, o))
-									local count = EntityOutputs.GetNumElements(ent, o)
-									#print(ent)
-									#print(o)
-									#print(":")
-									#printl(count)
-									for (local i=0; i < count; i++) {
-										local table = {}
-										EntityOutputs.GetOutputTable(ent, o, table, i)
-										EntFire(table.target, table.input, table.parameter, table.delay, ent)
-										#printf("%s %s %s %d %s\n", table.target, table.input, table.parameter, table.delay, ent.tostring())
-									}
-								}
-							}
-						}
-					})
-					#registered = true;
-					break;
-				}
-			}
-		})
+		local or = Entities.FindByClassname(null, "tf_objective_resource")
+		if (typeof(point__) == "instance") # ensure point is an entity
+			point__ = point__.GetName()
+		if (typeof(prev_point__) == "instance") # ensure point is an entity
+			prev_point__ = prev_point__.GetName()
+
+		# upvalue issue prevention
+		local point = Entities.FindByName(null, point__)
+		local prev_point = Entities.FindByName(null, prev_point__)
+
+		#printl(point)
+		if (!point || !point.IsValid()) # || !prev_point || !prev_point.IsValid())
+			return // check for value validity
+
+		local point_index = NetProps.GetPropInt(point, "m_iPointIndex")
+		local prev_point_index = prev_point && prev_point.IsValid() ? NetProps.GetPropInt(prev_point, "m_iPointIndex") : -1
+
+		local opposing_team = PVEBotTeam # (team == 3 ? 2 : 3)
+
+		//printf("%s require %s: %d-%d\n", point.GetName(), prev_point && prev_point.IsValid() ? prev_point.GetName() : "[EVERYPOINT]", point_index, prev_point_index)
+
+		# this is the worst fix ever (part 2) (is this even required)
+		local gr = Entities.FindByClassname(null, "tf_gamerules")
+		local state = GetRoundState()
+		NetProps.SetPropInt(gr, "m_iRoundState", 4)
+		point.AcceptInput("SetOwner", opposing_team.tostring(), point, point)
+		NetProps.SetPropInt(gr, "m_iRoundState", state)
+
+		point.KeyValueFromString("team_previouspoint_" + team.tostring() + "_0", prev_point && prev_point.IsValid() ?  prev_point.GetName() : "")
+		point.KeyValueFromString("team_previouspoint_" + team.tostring() + "_1", "")
+		point.KeyValueFromString("team_previouspoint_" + team.tostring() + "_2", "")
+
+		local iIntIndex = (point_index * MAX_PREVIOUS_POINTS) + (team * MAX_CONTROL_POINTS * MAX_PREVIOUS_POINTS)
+		NetProps.SetPropIntArray(or, "m_iPreviousPoints", prev_point_index, iIntIndex + 0)
+		NetProps.SetPropIntArray(or, "m_iPreviousPoints", -1, iIntIndex + 1)
+		NetProps.SetPropIntArray(or, "m_iPreviousPoints", -1, iIntIndex + 2)
+
+		#NetProps.SetPropInt(point, "m_iDefaultOwner", opposing_team)
+		#NetProps.SetPropInt(point, "m_iTeam", opposing_team)
+		#NetProps.SetPropInt(point, "m_iOwner", opposing_team)
+		#point.SetTeam(opposing_team)
+		#point.DispatchSpawn() // this is an ugly solution to a stupid problem
+
+		#NetProps.SetPropIntArray(or, "m_iOwner", opposing_team, point_index)
+		NetProps.SetPropBoolArray(or, "m_bTeamCanCap", true, point_index + team * MAX_CONTROL_POINTS)
+		NetProps.SetPropBoolArray(or, "m_bTeamCanCap", false, point_index + opposing_team * MAX_CONTROL_POINTS)
+		#NetProps.SetPropInt(or, "m_iUpdateCapHudParity", (NetProps.GetPropInt(or, "m_iUpdateCapHudParity") + 1) % (1<<6))
 	}
-	RegisterEvent("teamplay_round_start", temp)
+	# prevent rehooking the same point twice (thus filling memory?)
+	if (!hooked) RegisterEvent("MapResetPrePoints", temp) # is this required (yes)
 	temp({})
 }
-# todo: do not just re-round-spawn the cpm
-# modify the netprops of the objective resource directly instead!
-# m_iPreviousPoints!!!
-RegisterEvent("teamplay_round_active", function(params) {
-	RunDelayed(function(){
-		if (CPMRequireReset) {
-			EntFire("team_control_point_master", "RoundSpawn", "", 0, null)
-		}
-	})
-})
+::PVEClearRequiredHumanPointCapture <- function(point) {
+	PVEAddRequiredHumanPointCapture(point, point)
+}
 
+::WaitingForPlayersCheckActive <- 0
 ::WaitingForPlayersHasWarned <- false
 // band aid fix for maps getting stuck in waiting for players
 RegisterEvent("player_spawn", function(params) {
+	if (PVEDisabled || WaitingForPlayersCheckActive != 0) return;
 	local p = GetPlayerFromUserID(params.userid)
 	if (params.team == 0 || !p.IsAlive()) return;
 	if (IsInWaitingForPlayers()) {
+		::WaitingForPlayersCheckActive <- WaitingForPlayersCheckActive + 1
 		RunInNSeconds(35, function(){
 			if (GetHumanCount() > 0 && IsInWaitingForPlayers()) {
+				::WaitingForPlayersCheckActive <- WaitingForPlayersCheckActive + 2
 				if (!WaitingForPlayersHasWarned) {
 					printl("WaitingForPlayers should have ended by now, changing maps in a bit if the problem persists.")
 					ClientPrint(null, 3, "Waiting for players for longer than expected, this should not happen.")
@@ -6423,17 +6389,204 @@ RegisterEvent("player_spawn", function(params) {
 					::WaitingForPlayersHasWarned <- true
 				}
 				RunInNSeconds(30, function(){
+					::WaitingForPlayersCheckActive <- WaitingForPlayersCheckActive - 2
 					if (GetHumanCount() > 0 && IsInWaitingForPlayers()) {
 						RunCommand("randommap")
 					}
 				})
 			}
+			::WaitingForPlayersCheckActive <- WaitingForPlayersCheckActive - 1
 		})
 	}
 })
 
+if (!("PVEThisMapWasMVM" in getroottable()))::PVEThisMapWasMVM <- false
+::PVEDisableMVM <- function() {
+	local e = Entities.FindByClassname(null, "tf_logic_mann_vs_machine")
+	if (e) {
+		::PVEThisMapWasMVM <- true
+	}
+	if (PVEThisMapWasMVM) {
+		SteamIDInfoMessage.push("\x07FFFF00mvm to ctf conversion is still experimental.")
+		::PVEMvmUpgrades <- true
+		::PVEDisabled <- false
+		::PVEForceDisable <- false # fix null reference pointer issue (A-POSE)
+		::PVEAddTimer <- true
+		::PVEUpgradeIncludeSpawnrooms <- true
+
+		#fallback
+		RunDelayed(function(){ # Run Delayed so info_populator is actually created
+		EntFire("tf_logic_mann_vs_machine", "Kill", "", 0, null)
+		EntFire("info_populator", "Kill", "", 0, null)
+		EntFire("func_upgradestation", "Kill", "", 0.5, null)
+		NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingMannVsMachine", false)
+		NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingHybrid_CTF_CP", true)
+		NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 1 /*TF_GAMETYPE_CTF*/)
+		# reset round state
+		Convars.SetValue("mp_tournament", 0) # disable tournament
+
+		RunCommand("sv_visiblemaxplayers -1")
+		RunCommand("tf_bot_kick all")
+		PVERemoveUpgradeFN()
+		RunNextStep(PVEAddUpgradeFN)
+		PVELoadClassConfig(PVEDefaultClass)
+		PVECalcHumanBotCount()
+		RunNextStep(function(){
+			try {
+				__TEMP_SET_MP__(PVEHumanCount + PVEBotCount)
+			} catch (e) {}
+		})
+		#ForeachHuman(function(h){h.SetTeam(1)})
+		if (GetRoundState() == 10) {
+			::PVEAddBotsSilent <- false # strange fix for mvm maps
+			ProcessCommand(null, "!pve", ["!pve", "disable"])
+			RunInNSeconds(1, function(){
+				RunCommand("tf_powerup_mode 1") # reset tournament strangeness
+				RunCommand("mp_waitingforplayers_cancel 1")
+			})
+			RunInNSeconds(2, function(){
+				RunCommand("tf_powerup_mode 0") # reset tournament strangeness
+				RunCommand("tf_flag_caps_per_round 1")
+			})
+		}
+		RunInNSeconds(3, function(){
+			::PVEForceDisable <- false
+			::PVEMaintenanceMode <- false
+			if (PVEIsOnDedicatedServer) ProcessCommand(null, "!pve", ["!pve", "init"])
+			RunCommand("mp_restartgame 5") # reset tournament strangeness
+		})
+		RegisterEvent("teamplay_round_start", function(params) {
+			for (local e; e = Entities.FindByClassname(e, "func_capturezone");) {
+				if (e.GetTeam() != PVEBotTeam) {
+					local f = Entities.CreateByClassname("func_capturezone")
+					f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
+					f.SetOrigin(e.GetOrigin())
+					f.SetAbsAngles(e.GetAbsAngles())
+					PrecacheModel(e.GetModelName())
+					f.SetModel(e.GetModelName())
+					f.SetTeam(PVEBotTeam)
+					f.DispatchSpawn()
+				}
+			}
+			# enable all bot hints avaliable
+			EntFire("bot_hint*", "enable", "", 0, null)
+			EntFire("bot_hint*", "setteam", PVEBotTeam.tostring(), 0, null)
+			EntFire("item_teamflag", "SetReturnTime", "0", 0, null)
+			RunNextStep(function(){
+				ForeachBot(function(b){ UTILBotSetMissionSafe(b, 0, true) })
+			})
+			if ("PVECustomBotHints" in getroottable()) {
+				local hintcount = 0
+				foreach (hint in PVECustomBotHints) {
+					local e = Entities.CreateByClassname("bot_hint_engineer_nest")
+					NetProps.SetPropString(e, "m_iName", "PVEBotHint"+hintcount.tostring())
+					e.SetOrigin(hint.nest_origin)
+					e.SetAbsAngles(hint.nest_angles)
+					e.SetTeam(PVEBotTeam)
+					e.DispatchSpawn()
+					EntFireByHandle(e, "enable", "", 0, e, e)
+					local f = Entities.CreateByClassname("bot_hint_sentrygun")
+					NetProps.SetPropString(f, "m_iName", "PVEBotHint"+hintcount.tostring())
+					NetProps.SetPropBool(f, "m_isSticky", true)
+					f.SetOrigin(hint.gun_origin)
+					f.SetAbsAngles(hint.gun_angles)
+					f.SetTeam(PVEBotTeam)
+					f.DispatchSpawn()
+					EntFireByHandle(f, "enable", "", 0, f, f)
+					hintcount += 1
+				}
+			}
+		})
+		RegisterEvent("player_spawn", function(params) {
+			if (PVEDisabled || Uncletopia1kuAccurate) return;
+			local player = GetPlayerFromUserID(params.userid)
+			PVEPlayerSetRobotModel(player)
+		})
+		RegisterEvent("post_inventory_application", function(params) {
+			if (PVEDisabled || Uncletopia1kuAccurate) return;
+			for (local e; e=Entities.FindByClassname(e, "tf_wearable");) {
+				if (e.GetOwner() && !e.GetOwner().IsFakeClient()) {
+					local id = NetProps.GetPropInt(e, "m_AttributeManager.m_Item.m_iItemDefinitionIndex")
+					if ([231 642 608 405 444 133].find(id) == null) {
+						e.Kill()
+					}
+				}
+			}
+		})
+		::PVEFlagResetPositionFN <- function(){
+			if (!("PVEFlagResetPosition" in getroottable())) return
+			#EntFireByHandle(PVEIntelHandle, "ForceResetSilent", "", 1, PVEIntelHandle, PVEIntelHandle)
+			# extra delay so we move the flag after it has reset
+			RunInNSeconds(1.5, function(){
+				PVEIntelHandle.SetAbsOrigin(PVEFlagResetPosition)
+				EntFireByHandle(PVEIntelHandle, "Enable", "", 1, PVEIntelHandle, PVEIntelHandle)
+			})
+		}
+		RegisterEvent("teamplay_round_start", function(params) {
+			if (!PVEIntelHandle || !PVEIntelHandle.IsValid())
+				::PVEIntelHandle <- null
+			if (!PVEIntelHandle)
+				::PVEIntelHandle <- Entities.FindByName(null, "intel")
+			if (!PVEIntelHandle)
+				::PVEIntelHandle <- Entities.FindByName(null, "classic_mode_intel")
+			if (!PVEIntelHandle)
+				::PVEIntelHandle <- Entities.FindByClassname(null, "item_teamflag")
+			if (!PVEIntelHandle) {
+				::PVEIntelHandle <- Entities.CreateByClassname("item_teamflag")
+				PVEIntelHandle.SetTeam(PVEHumanTeam)
+				EntFireByHandle(PVEIntelHandle, "enable", "", 5, PVEIntelHandle, PVEIntelHandle)
+				NetProps.SetPropInt(PVEIntelHandle, "m_nType", 1) # TF_FLAGTYPE_ATTACK_DEFEND
+				if ("PVEFlagResetPosition" in getroottable())
+					PVEIntelHandle.SetAbsOrigin(PVEFlagResetPosition)
+				PVEIntelHandle.DispatchSpawn()
+			}
+			PVEFlagResetPositionFN()
+			if (!IsInWaitingForPlayers())
+				EntFire("team_round_timer", "SetTime", "1", 1, null)
+			if (!IsInWaitingForPlayers())
+				for (local e; e = Entities.FindByClassname(e, "func_respawnroom");) {
+					local f = SpawnEntityFromTable("trigger_add_tf_player_condition",{
+						origin     = e.GetOrigin()
+						angles     = e.GetAbsAngles()
+						condition  = 51
+						duration   = -1
+						spawnflags = 1 // allow players only
+					})
+					f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
+					PrecacheModel(e.GetModelName())
+					f.SetModel(e.GetModelName())
+					f.SetTeam(e.GetTeam())
+					f.SetSolid(e.GetSolid())
+					#f.DispatchSpawn()
+					RunNextStep(function(){
+						NetProps.SetPropInt(f, "m_nCondition", 51)
+						NetProps.SetPropFloat(f, "m_flDuration", -1)
+					})
+				}
+		})
+		RegisterEvent("teamplay_flag_event", function(params) {
+			if (!PVERunning || !PVEIntelHandle || !PVEIntelHandle.IsValid() || !PVEShouldUncletopiaCTFChangesBeEnabled()) return
+			switch (params.eventtype) {
+				case 2: # TF_FLAGEVENT_CAPTURE
+				case 5: # TF_FLAGEVENT_RETURNED
+				case 4: # TF_FLAGEVENT_DROPPED
+					RunNextStep(PVEFlagResetPositionFN)
+					break;
+				case 1: # TF_FLAGEVENT_PICKUP
+				case 3: # TF_FLAGEVENT_DEFEND
+				default: # IDK
+					break;
+			}
+		})
+		})
+	} else {
+		Convars.SetValue("mp_tournament", 0)
+	}
+	return PVEThisMapWasMVM
+}
+
 # TEMP
-::ApplyBase1kuPreset <- function(_ignore1=null,_ignore2=null) {
+::ApplyBase1kuPreset <- function(_ignore1=null,_ignore2=null,_mvmcall=false) {
 	::PresetAppliedBase1ku <- true # do not toggle twice
 	#::GivePlayerWeaponRecycle <- true # still too unstable
 	::PVERemoveItemsUsingMedievalMode <- true # newest spawncamp item equip stuff
@@ -6442,7 +6595,14 @@ RegisterEvent("player_spawn", function(params) {
 	::PVEAddBotsSilent <- true // prevent join messages flooding the chat
 	Convars.SetValue("tf_medieval_autorp", false)
 
-	# class specific debuffs
+	// Disable MvM first
+	if (!_mvmcall && PVEDisableMVM()) {
+		PVESetClassDefault(Mv1kUChangesEnabled ? "dane_extra" : "dane")
+		RunInNSeconds(5, function(){ApplyBase1kuPreset(_ignore1, _ignore2, true)})
+		return
+	}
+
+	# class specific (de-)buffs
 	RegisterEvent("post_inventory_application", function(params){
 		if (PVEDisabled) return;
 		RunNextStep(function(){
@@ -6452,41 +6612,47 @@ RegisterEvent("player_spawn", function(params) {
 				local heldWeapon = NetProps.GetPropEntityArray(player, "m_hMyWeapons", i)
 				if (heldWeapon == null || !heldWeapon.IsValid())
 					continue
-				if (player.GetPlayerClass() == 8 && (heldWeapon.GetClassname() == "tf_weapon_sapper" || heldWeapon.GetClassname() == "tf_weapon_builder")){
-					heldWeapon.AddAttribute("sapper health penalty", 0.01, -1) # allow bots to one shot sappers
+				// make spy sapper be one shottable
+				if (player.GetPlayerClass() == 8){
+					if (heldWeapon.GetClassname() == "tf_weapon_sapper" || heldWeapon.GetClassname() == "tf_weapon_builder") {
+						heldWeapon.AddAttribute("sapper health penalty", 0.01, -1) # allow bots to one shot sappers
+					} else if (Mv1kUChangesEnabled && heldWeapon.GetClassname() == "tf_weapon_knife" && PVEScrambled) {
+						heldWeapon.AddAttribute("dmg pierces resists absorbs", 1, -1) # backstabs should always kill even with melee resist
+					}
+				}
+				// link sentry damage to fire rate (todo: enable?)
+				// this would need to be mentioned somewhere but I dont know where that would be
+				if (false && Mv1kUChangesEnabled && player.GetPlayerClass() == 9 && (heldWeapon.GetClassname() == "tf_weapon_pda_engineer_build")){
+					local attrib = heldWeapon.GetAttribute("engy sentry fire rate increased", 1)
+					if (attrib == 1) {
+						heldWeapon.RemoveAttribute("engy sentry damage bonus")
+					} else {
+						heldWeapon.AddAttribute("engy sentry damage bonus", 1 / attrib, -1)
+					}
 				}
 			}
-
-			# todo: half shield duration
-			if (false && player.GetPlayerClass() == 5 && Mv1kUChangesEnabled) {
-				player.AddCustomAttribute("increase buff duration", 0.6, -1) # default is 1.2 for medic shield
+			/* // do not count strange attributes (todo: enable?)
+			for (local next, current = player.FirstMoveChild(); current != null; current = next){
+				next = current.NextMovePeer() // store the next handle
+				if (current instanceof CEconEntity) {
+					# prevent killeater (strange) attributes from counting by overwriting the counted event with an invalid value
+					if (current.GetAttribute("kill eater ", -1) != -1) current.AddAttribute("kill eater score type", -1, -1)
+					if (current.GetAttribute("kill eater 2", -1) != -1) current.AddAttribute("kill eater score type 2", -1, -1)
+					if (current.GetAttribute("kill eater 3", -1) != -1) current.AddAttribute("kill eater score type 3", -1, -1)
+					if (current.GetAttribute("kill eater user 1", -1) != -1) current.AddAttribute("kill eater user score type 1", -1, -1)
+					if (current.GetAttribute("kill eater user 2", -1) != -1) current.AddAttribute("kill eater user score type 2", -1, -1)
+					if (current.GetAttribute("kill eater user 3", -1) != -1) current.AddAttribute("kill eater user score type 3", -1, -1)
+				}
+			}
+			*/
+			// reduce medic shield duration
+			if (player.GetPlayerClass() == 5 && Mv1kUChangesEnabled) {
+				player.AddCustomAttribute("increase buff duration HIDDEN", 0.9, -1) # set to 3/4 of normal duration (usually 1.2)
 			}
 		})
 	})
 
-	RegisterEvent("teamplay_round_start", function(params) {
-		# IDEA: let bots always have crits in medieval mode (does not work)
-		if (false && PVEMedievalEnabledByDefault) {
-			#PVEClassOptions.dane_extra.mission <- 3
-			PVEClassOptions.dane_extra.bot_attributes <-
-				Constants.FTFBotAttributeType.ALWAYS_CRIT +
-				Constants.FTFBotAttributeType.AGGRESSIVE
-			PVEClassOptions.dane_extra.player_weapon_attributes <- [
-				{ slot = 0 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 1 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 2 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 3 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 4 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 5 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 6 attributes = [{ name = "crit mod disabled" value = 0} ]}
-				{ slot = 7 attributes = [{ name = "crit mod disabled" value = 0} ]}
-			]
-		}
-	})
-
-	# ::ENTKILL_RAGDOLLCOUNT <- -1 # temp: allow all ragdolls
 	::PVEDisableBotCrits <- false
-	#::PVEAllowDelayedEquip <- false
 	if (!PVEDisabled || _ignore1 != null) {
 		::PVEDisabled <- false
 		PVESetClassDefault(Mv1kUChangesEnabled ? "dane_extra" : "dane")
@@ -6512,23 +6678,10 @@ RegisterEvent("player_spawn", function(params) {
 	ENTITY_TYPES.extend(["tf_dropped_weapon" "tf_ammo_pack" /* "instanced_scripted_scene" "tf_ragdoll" */])
 
 	# CUSTOM UPGRADE FILES NEED TO BE SYNCED TO THE CLIENTS, OTHERWISE THEY DON'T WORK!!!
-	// this causes an empty upgrade menu in some cases, so leave it disabled for now
-	# WORKSHOP MAPS BREAK UPGRADES
 	if (true /*&& !startswith(GetMapName(), "workshop")*/) {
 		if (NetProps.GetPropString(Entities.FindByClassname(null, "tf_gamerules"), "m_pszCustomUpgradesFile") == "")
 			EntFire("tf_gamerules", "SetCustomUpgradesFile", "scripts/items/1ku_upgrades_006.txt", 0, null)
 	}
-
-	/* # THIS MESSES WITH IsAttackDefenseMode
-	RegisterEvent("teamplay_round_start", function(params) {
-		if (PVEDisabled) return;
-		for (local e; e=Entities.FindByClassname(e, "team_control_point_master");) {
-			NetProps.SetPropBool(e, "m_bSwitchTeamsOnWin", false)
-		}
-		#if (IsInKothMode())
-		#	EntFire("team_round_timer", "SetTime", "10", 1, null)
-	})
-	*/
 
 	# buff for every point capped
 	::PVEPointCapBuffTime <- 25
@@ -6548,17 +6701,6 @@ RegisterEvent("player_spawn", function(params) {
 		if (Mv1kUChangesEnabled && NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") != 3)
 			PVEGiveCurrency(375, null) # todo: balance extra currency
 
-		/*
-		# TEMP; DO NOT PUT ON SERVER
-		# very dumb balance concept to prevent the bots being overran
-		// also breaks because of RunInNSteps
-		RunInNSteps(10, function(){
-			if (GetRoundState() == 4) { # only do something in normal gameplay
-				ProcessCommand(GetPreferrablyABotButOtherwiseAnyPlayerByHandle(), "!bomb", ["!bomb"])
-				if (!IsInKothMode()) ForeachBot(function(b){b.RemoveAllObjects(false)}) # the point moves, do not maintain sentry
-			}
-		})
-		*/
 	})
 	RegisterEvent("teamplay_flag_event", function(params) {
 		if (params.eventtype != 2 /*TF_FLAGEVENT_CAPTURE*/) return
@@ -6631,32 +6773,9 @@ RegisterEvent("player_spawn", function(params) {
 	# is captured (this fixes pathing issues + backcapping)
 	if (!IsInKothMode() && !PVEMedievalEnabledByDefault && !IsAttackDefenseMode() && PVEWasCp) { # TF_GAMETYPE_CP
 		::PVENextPointCapForceLinear <- true
-		::PVEBlockNextPointCapDelay <- 0
 		# PVEClassOptions.dane_extra.bot_attributes <- Constants.FTFBotAttributeType.PRIORITIZE_DEFENSE
 	}
-	# TEMP, maybe enable soon?
-	# more money on non pl maps
-	if (false && NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") != 3) {
-		::PVECurrencyFactor <- 2
-	}
 
-	# todo: find a balance before activating this
-	if (false) {
-		# toggle bot scramble based on a min player count
-		::PVEScrambleTeamsThreshhold <- 66 # 20 # very high for now, do not enable accidentally
-		RegisterEvent("player_connect", function(params) {
-			RunNextStep(function(){
-				if (GetHumanCount() >= PVEScrambleTeamsThreshhold)
-					Convars.SetValue("mp_scrambleteams_auto", 1)
-			})
-		})
-		RegisterEvent("player_disconnect", function(params) {
-			RunNextStep(function(){
-				if (GetHumanCount() < PVEScrambleTeamsThreshhold)
-					Convars.SetValue("mp_scrambleteams_auto", 0)
-			})
-		})
-	}
 	RunCommand("mp_maxrounds 0")
 	::PVEGoToRandomMapOnGameOver <- false
 	#::PVEClearBotItemsOnRoundEnd <- true
@@ -6673,10 +6792,7 @@ RegisterEvent("player_spawn", function(params) {
 	::PVEModifyCaptureTimes <- true
 	RegisterEvent("teamplay_round_start", function(params) {
 		if (PVEDisabled || !PVEModifyCaptureTimes) return;
-		# Game mode specific changes to increase difficulty
-		EntFire("team_train_watcher", "SetTrainRecedeTimeAndUpdate", "10", 10, null)
-
-		# this is from the tf2 wiki
+		# the following is from the tf2 wiki
 		// Must set this when the map resets only, otherwise the scaling compounds between rounds
 		// If this is set elsewhere, it may not work as the m_flCapTime gets reset.
 		if (params.full_reset && PVEWasCp && !IsInKothMode() && PVEPointCaptureTimeOverwrite > 0)
@@ -6848,7 +6964,7 @@ RegisterEvent("player_spawn", function(params) {
 						EntFire("team_round_timer", "enable", "", 1, null)
 					})
 					for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-						entity.KeyValueFromInt("cpm_restrict_team_cap_win", 1)
+						NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 2)
 					}
 				})
 				::PVEPointsCapped <- 0
@@ -6885,7 +7001,7 @@ RegisterEvent("player_spawn", function(params) {
 							})
 							::PVEPointCenterRadius <- 2048
 							for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-								entity.KeyValueFromInt("cpm_restrict_team_cap_win", 0)
+								NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 0)
 							}
 							break;
 						case 4: # fix win condition
@@ -6899,7 +7015,7 @@ RegisterEvent("player_spawn", function(params) {
 									EntFire("team_round_timer", "enable", "", 2, null)
 								})
 								for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-									entity.KeyValueFromInt("cpm_restrict_team_cap_win", PVEHumanTeam)
+									NetProps.SetPropInt(entity, "m_iInvalidCapWinner", PVEHumanTeam)
 								}
 							})
 							break;
@@ -6923,8 +7039,6 @@ RegisterEvent("player_spawn", function(params) {
 				})
 				break;
 			case "cp_freaky_fair":
-				// todo: add Uncletopia1kuAccurate patch (This map is awful to mod, I wont touch it unless I'm asked to)
-				#::PVENextPointCapForceLinear <- false
 				::PVERemoveItemsUsingMedievalModeFallback <- true # error spam otherwise
 				if (typeof(AddThinkToEnt) == "native function") {
 					local DefaultAddThinkFn = AddThinkToEnt
@@ -6939,21 +7053,14 @@ RegisterEvent("player_spawn", function(params) {
 						::PVEPointsCapped <- 0
 						::PVEForceBotSpawnLocation <- Vector(-1250, -350, 350)
 					})
-					#EntFire("cap_middle", "SetLocked", "1", 11, null)
-					#EntFire("cap_*", "SetOwner", "2", 10, null)
 				})
 				RegisterEvent("teamplay_point_captured", function(params) {
 					::PVEPointsCapped <- PVEPointsCapped + 1
 					switch (PVEPointsCapped) {
 						case 1: # next point: center
 							::PVEForceBotSpawnLocation <- Vector(1283, 122, 270)
-							#EntFire("cap_blue_2", "SetLocked", "1", 0, null)
-							#EntFire("cap_middle", "SetLocked", "0", 0, null)
-							#ForeachBot(function(b){UTILRespawn(b)})
 							break;
 						case 2: # next point: last
-							#EntFire("cap_middle", "SetLocked", "1", 0, null)
-							#EntFire("cap_red_2", "SetLocked", "0", 0, null)
 							::PVEForceBotSpawnLocation <- null
 							break;
 						case 3: # game won
@@ -7036,17 +7143,7 @@ RegisterEvent("player_spawn", function(params) {
 				::PVEPayloadSpeedLimit <- -1 # fix train
 				break;
 			case "cp_cloak":
-				# The bots dont build at the moment... why?
-				PVEAddRequiredHumanPointCapture("cappoint_cloak", "cappoint_cloak")
-				::ISVSH <- true
-				::PVEPointCenter <- Vector(0, 0, 0)
-				::PVEPointCenterRadius <- 1024
 				RegisterEvent("teamplay_round_start", function(params) {
-					::ISVSH <- true
-					RunDelayed(function(){
-						::PVEPointCenter <- Vector(0, 0, 0)
-						::PVEPointCenterRadius <- 1024
-					})
 					local e = Entities.FindByClassname(null, "trigger_capture_area")
 					foreach(team, pos in {[PVEHumanTeam] = Vector(600, -600, -400), [PVEBotTeam] = Vector(-600, 600, -400)}) {
 						local f = Entities.CreateByClassname("func_respawnroom")
@@ -7097,6 +7194,7 @@ RegisterEvent("player_spawn", function(params) {
 				break;
 			case "cp_degrootkeep":
 			case "cp_degrootkeep_rats":
+				::PVECaptures <- 0
 				PVEAddRequiredHumanPointCapture("control_point_2", "control_point_1")
 				RegisterEvent("teamplay_round_start", function(params){
 					::PVECaptures <- 0
@@ -7107,19 +7205,22 @@ RegisterEvent("player_spawn", function(params) {
 						EntFire("keep_door", "open", "", 1, null)
 					}
 				})
+				# temp, restore old pve point behavior (the timer did not work the last 6 months)
+				# ToDo: keep the timer but change the timeout instead?
+				EntFire("tf_logic_cp_timer", "Kill", "", 0, null)
 			case "cp_burghausen":
 				::PVEMedievalEnabledByDefault <- true
 				RegisterEvent("teamplay_round_start", function(params){
 					Convars.SetValue("tf_medieval_autorp", true)
 					PVEToggleMedieval(true, false)
 					RunNextStep(function(){
-						ForeachHuman(function(h){UTILRespawn(h)})
+						ForeachHuman(UTILRespawn)
 						ClientPrint(null, 4, "")
 					})
 					// bot behavior fix
 					RunDelayed(function(){
 						Convars.SetValue("tf_bot_melee_only", true)
-						ForeachBot(function(b){UTILRespawn(b)})
+						ForeachBot(function(b){UTILBotSetMissionSafe(b, 0, true)})
 					})
 				})
 				ENTITY_TYPES.push("item_healthkit_small") # do not allow dropping healthpacks
@@ -7148,23 +7249,6 @@ RegisterEvent("player_spawn", function(params) {
 				PVEAddRequiredHumanPointCapture("cap_B", "cap_A")
 				PVEAddRequiredHumanPointCapture("cap_A", "cap_A")
 				break;
-			/*
-			case "cp_cowerhouse":
-				RegisterEvent("teamplay_round_start", function(params) {
-					for (local e; e = Entities.FindByClassname(e, "trigger_capture_area");) {
-						if (NetProps.GetPropString(e, "m_iszCapPointName") == "blu_cap_point") {
-							e.SetAbsOrigin(Vector(0, 0, 200))
-						}
-					}
-				})
-			case "cp_powerhouse":
-				// NOTE: there is an uncletopia stripper but it looks more like an bef stripper than an 1ku stripper
-				// do not implement in Uncletopia1kuAccurate for now
-				RegisterEvent("teamplay_round_start", function(params) {
-					EntFire("mid_cap_point", "SetLocked", "1", 41, null)
-				})
-				break;
-			*/
 			case "cp_carrier":
 				RegisterEvent("teamplay_round_start", function(params) {
 					::ISVSH <- false
@@ -7257,7 +7341,7 @@ RegisterEvent("player_spawn", function(params) {
 					}
 				})
 				break;
-			case "sd_marshlands":
+			case "htf_marshlands":
 				RegisterEvent("teamplay_round_start", function(params) {
 					::PVEPointCenter <- Vector(-2200, 0, -250)
 					::PVEPointCenterRadius <- 2048 - 256
@@ -7306,43 +7390,31 @@ RegisterEvent("player_spawn", function(params) {
 				})
 			break;
 			case "pl_patagonia":
-				# fix stage 2 train
+				# fix stage 2 train crossing
 				::PVEPayloadSpeedLimit <- -1
-				# fix elevator on stage 1 point 2
-				::PVEInitPathFix <- false
 				RegisterEvent("teamplay_setup_finished", function(params) {
 					Convars.SetValue("tf_escort_recede_time", 20)
 					EntFire("team_train_watcher", "SetTrainRecedeTimeAndUpdate", "0", 1, null)
-					return;
-					#if (PVEInitPathFix) {
-
-						# stage 1 and stage 3 pathing
-						::PVEInitPathFix <- false
-						ForeachBot(function(p){
-							RunDelayed(function(){
-								UTILRespawn(b)
-							})
-						})
-					#}
-				})
-				RegisterEvent("teamplay_round_start", function(params) {
-					if (params.full_reset)
-						::PVEInitPathFix <- true
 				})
 			case "pl_bloodwater":
 				# undo legacy settings (apply after waiting for players ends)
 				::PVEAggressiveCleanup <- false
-				::PVEReduceSpawnpoints <- false
 				::PVECancelPlayerWait <- false
 				::PVEClearBotItemsOnRoundEnd <- true
 				::PVEExtremeEquipDelay <- false
-				PVEClassOptions.dane.cosmetics <- []
-				PVEClassOptions.dane_extra.cosmetics <- []
-			case "pl_phoenix":
+				#PVEClassOptions.dane.cosmetics <- []
+				#PVEClassOptions.dane_extra.cosmetics <- []
+				::PayloadCleanupExperimental <- true
+			case "pl_phoenix": // is this required here?
 			case "pl_embargo":
+				::PVEPayloadSpeedLimit <- -1 # fix cart desyncing
 				ENTITY_TYPES.extend(["bot_hint_sentrygun" "bot_hint_teleporter_exit" /*"instanced_scripted_scene"*/ "tf_ragdoll" "vgui_screen" "func_occluder"])
-				RunNextStep(function(){
-					::PVEMedievalBetweenRounds <- true
+				break;
+			case "pl_spineyard":
+				RegisterEvent("teamplay_round_start", function(params) {
+					if (PVEDisabled) return;
+					# prevent the skeletons from spawning and breaking
+					EntFire("logic_script", "Kill", "",0, null)
 				})
 				break;
 			case "2koth_abbey":
@@ -7393,7 +7465,7 @@ RegisterEvent("player_spawn", function(params) {
 			case "mvm_decoy":
 				::PVEFlagResetPosition <- Vector(0, 2300, 360)
 				# TEMP: kill noncentered respawn points
-				RegisterEvent("teamplay_round_start", function(params) {
+				RegisterEvent("MapReset", function(params) {
 					EntFire("spawnbot_*", "Kill", "", 1, null)
 				})
 				break;
@@ -7405,7 +7477,7 @@ RegisterEvent("player_spawn", function(params) {
 				::PVECapCount <- 0
 				RegisterEvent("teamplay_round_start", function(params) {
 					for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-						entity.KeyValueFromInt("cpm_restrict_team_cap_win", 1)
+						NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 1)
 					}
 					::PVECapCount <- 0
 					# make gates openable by humans
@@ -7421,6 +7493,8 @@ RegisterEvent("player_spawn", function(params) {
 						ForeachHuman(function(h){h.ForceRegenerateAndRespawn()})
 					})
 					})
+				})
+				RegisterEvent("MapReset", function(params){
 					foreach (name in [
 						"func_nav*"
 						"spawnbot_*"
@@ -7433,7 +7507,7 @@ RegisterEvent("player_spawn", function(params) {
 				})
 				RegisterEvent("teamplay_point_captured", function(params) {
 					for (local entity; entity = Entities.FindByClassname(entity, "team_control_point_master");) {
-						entity.KeyValueFromInt("cpm_restrict_team_cap_win", 1)
+						NetProps.SetPropInt(entity, "m_iInvalidCapWinner", 1)
 					}
 					EntFire("item_teamflag", "disable", "", 1, null)
 					::PVECapCount <- PVECapCount + 1
@@ -7466,7 +7540,7 @@ RegisterEvent("player_spawn", function(params) {
 				break;
 			case "mvm_mannworks":
 				# temp: spawnpoint manipulation
-				RegisterEvent("teamplay_round_start", function(params) {
+				RegisterEvent("MapReset", function(params) {
 					EntFire("spawnbot_*", "Kill", "", 0, null)
 				})
 				::PVEFlagResetPosition <- Vector(960, 1670, 135)
@@ -7507,7 +7581,7 @@ RegisterEvent("player_spawn", function(params) {
 					}
 				})
 				# temp: spawnpoint manipulation
-				RegisterEvent("teamplay_round_start", function(params) {
+				RegisterEvent("MapReset", function(params) {
 					EntFire("spawnbot_*", "Kill", "", 0, null)
 				})
 				::PVECustomBotHints <- [ # autogenerated using !dumphints
@@ -7755,6 +7829,86 @@ RegisterEvent("player_spawn", function(params) {
 				break;
 		}
 	})
+	# turn arena mode into koth
+	::PVEArenaHijack <- GetMapName() == "cp_cloak"
+	RunNextStep(function(){
+		RunNextStep(function(){
+			if (NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") == 4) { # ARENA
+				SteamIDInfoMessage.push("\x07FFFF00arena to koth conversion is still experimental.")
+				::PVEArenaHijack <- true
+				::PVEUpgradeIncludeSpawnrooms <- true
+				NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingKoth", true)
+				NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 2) # CP
+			}
+		})
+	})
+	RegisterEvent("teamplay_round_start", function(params) {
+		if (!PVEArenaHijack) return;
+		EntFire("team_round_timer", "Kill", "", 0, null)
+		local arena = Entities.FindByClassname(null, "tf_logic_arena")
+		if (arena && arena.IsValid()) foreach (output in ["OnArenaRoundStart" "OnCapEnabled"]) {
+			local count = EntityOutputs.GetNumElements(arena, output)
+			for (local i=0; i < count; i++) {
+				local table = {}
+				EntityOutputs.GetOutputTable(arena, output, table, i)
+				EntFire(table.target, table.input, table.parameter, table.delay, arena)
+			}
+		}
+		RunNextStep(function(){
+			if (arena && arena.IsValid()) arena.Kill()
+			NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingKoth", true)
+			NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 2) # CP
+			local area = Entities.FindByClassname(null, "trigger_capture_area")
+			local koth = Entities.CreateByClassname("tf_logic_koth")
+			NetProps.SetPropString(koth, "m_iName", "tf_logic_koth")
+			NetProps.SetPropInt(koth, "m_nTimeToUnlockPoint", 0)
+			koth.DispatchSpawn()
+			EntFire("tf_logic_koth", "RoundSpawn", "", 0, null)
+			EntFire("tf_logic_koth", "RoundActivate", "", 1, null)
+			EntFire("tf_gamerules", "SetBlueTeamGoalString", "#koth_setup_goal", 0, null)
+			EntFire("tf_gamerules", "SetRedTeamGoalString", "#koth_setup_goal", 0, null)
+			EntityOutputs.AddOutput(area, "OnCapTeam1", "tf_gamerules", "SetRedKothClockActive", "", 0, -1)
+			EntityOutputs.AddOutput(area, "OnCapTeam2", "tf_gamerules", "SetBlueKothClockActive", "", 0, -1)
+			local checkedblu = false
+			local checkedred = false
+			if (!Entities.FindByClassname(null, "func_respawnroom")) for (local e; e = Entities.FindByClassname(e, "info_player_teamspawn");) {
+				if ((e.GetTeam() == 3 && !checkedblu) || (e.GetTeam()==2 && !checkedred)) {
+					if (e.GetTeam() == 3) checkedblu = true;
+					if (e.GetTeam() == 2) checkedred = true;
+					local f = SpawnEntityFromTable("func_respawnroom",{
+						origin     = e.GetOrigin()
+						angles     = e.GetAbsAngles()
+					})
+					f.SetSize(Vector(-300,-300,-6000), Vector(300,300,6000)) // approx, make high because it should work
+					f.SetTeam(e.GetTeam())
+					f.SetSolid(2) # SOLID_BBOX
+				}
+			}
+			RunNextStep(function(){
+				::PVEFakeSetupTimeStart <- 1
+				if (!IsInWaitingForPlayers())
+					for (local e; e = Entities.FindByClassname(e, "func_respawnroom");) {
+						local f = SpawnEntityFromTable("trigger_add_tf_player_condition",{
+							origin     = e.GetOrigin()
+							angles     = e.GetAbsAngles()
+							condition  = 51
+							duration   = -1
+							spawnflags = 1 // allow players only
+						})
+						f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
+						if (e.GetModelName() && e.GetModelName() != "") PrecacheModel(e.GetModelName())
+						if (e.GetModelName() && e.GetModelName() != "") f.SetModel(e.GetModelName())
+						f.SetTeam(e.GetTeam())
+						f.SetSolid(e.GetSolid())
+						#f.DispatchSpawn()
+						RunNextStep(function(){
+							NetProps.SetPropInt(f, "m_nCondition", 51)
+							NetProps.SetPropFloat(f, "m_flDuration", -1)
+						})
+					}
+			})
+		})
+	})
 	if (GetMapName() != "koth_nucleus") { # force the bots to build near the koth capture point
 		::PVEPointCenter <- null
 		::PVEPointCenterRadius <- 640
@@ -7808,7 +7962,7 @@ RegisterEvent("player_spawn", function(params) {
 		})
 		// this event does not need to be hooked outside koth
 		if (IsInKothMode()) RegisterEvent("Update", function(params) {
-			if (Mv1kUChangesEnabled && IsInKothMode() && GetMapName() != "cp_sulfur" && GetMapName() != "tow_dynamite" && GetMapName() != "sd_marshlands" && !PVEPointOwnedByBots) {
+			if (Mv1kUChangesEnabled && IsInKothMode() && GetMapName() != "cp_sulfur" && GetMapName() != "tow_dynamite" && GetMapName() != "htf_marshlands" && !PVEPointOwnedByBots) {
 				ForeachBot(function(b){
 					b.AddCondEx(11, 0.25, b) # TF_COND_CRITBOOSTED
 					b.AddCondEx(32, 0.25, b) # Speed boost
@@ -7871,11 +8025,31 @@ RegisterEvent("player_spawn", function(params) {
 	})
 
 	# all of these vsh fix attempts are just a mess
-	# loosing as saxton hale crashes the game (at least on a listen server)
-	::VSHTEMPPATCHATTEMPT <- false
+	# loosing as saxton hale crashes the game (at least on a listen server (sometimes))
+	::VSHTEMPPATCHATTEMPT <- true // enable because if disabled it crashes more often
 	::ISVSH <- false
-	::VSHHIJACK <- function(params = {}) {
+	::VSHHIJACK <- function(params = null) {
 		if (!VSHTEMPPATCHATTEMPT || !("SetPersistentVar" in getroottable())) return;
+		if (params == null && GetRoundState() > 2) {
+			Convars.SetValue("mp_restartgame", 1) // does this help???
+		}
+		#TEMP
+		::PVEHumanTeam <- TEAM_ATTACK
+		::PVEBotTeam <- TEAM_DEFEND
+		::PVEMoveTeamDisabled <- true
+		::PVEAllowHumansInBotTeam <- true
+		::PVEForceBotSpawnLocationDisabled <- false
+		::PVEAllowBotsInNonBotTeam <- true
+		::PVETreatNonCosmeticRedPlayersAsBots <- false
+		::PVEDoNotAggroOnHealthbar <- false
+		Convars.SetValue("mp_humans_must_join_team", "any")
+		Convars.SetValue("mp_forceautoteam", 0)
+		::PVERedImmediateRespawn <- false
+		::PVEBluImmediateRespawn <- false
+		::PVERefundOnClassChange <- false
+		::PVEScrambled <- true
+		::PVECurrencyMode <- CurrencyMode.GLOBAL # team and individual break
+		#/TEMP
 		#NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 1) # CTF
 		::ISVSH <- true
 		::PVEPointCenterRadius <- 1024
@@ -7901,11 +8075,31 @@ RegisterEvent("player_spawn", function(params) {
 				}
 			}
 		}
+		RunInNSeconds(5, function(){
+			# make hale have more health
+			ForeachPlayer(function(p) {
+				if (p.GetTeam() == 3) { # hale
+					local maxhealth = p.GetCustomAttribute("max health additive bonus", 0) + 300
+					maxhealth *= 1.5
+					p.RemoveCustomAttribute("max health additive bonus");
+					p.AddCustomAttribute("max health additive bonus", maxhealth - 300, -1);
+					p.SetMaxHealth(maxhealth)
+					p.SetHealth(maxhealth)
+					try {
+						bosses[p].startingHealth = maxHealth
+					} catch (e) {
+						// idk, this should not happen with the correct boss
+					}
+				}
+			})
+		})
 	}
 	#RegisterEvent("player_connect", VSHHIJACK)
+	RegisterEvent("MapReset", VSHHIJACK)
 	RegisterEvent("teamplay_round_start", VSHHIJACK)
 	RegisterEvent("teamplay_round_win", VSHHIJACK)
-	RegisterEvent("Setup", VSHHIJACK)
+	VSHHIJACK()
+
 
 	# stuck protection (very broken at the moment)
 	// this does not do anything at the moment except accidentally warp bots whenever its not needed
@@ -8031,17 +8225,20 @@ RegisterEvent("player_spawn", function(params) {
 		})
 	}
 	# progressive upgrades
+	# TODO: implement in normal item attribute system
 	if (true) {
 		local primary_attributes = [
 			{ name = "accuracy scales damage" value = 1} # will go up to 2
 			{ name = "crit mod disabled hidden"     value = 0 } # will go back up to 1
 			{ name = "ammo regen"                   value = 0 } # is percentage (make go up to 50%)
 		]
+		#printl(IsInMedievalMode()) // todo: test "projectile penetration" against spawncamping
 		local melee_attributes = [
 			{ name = "fire rate bonus"			value = 1 } # will go down to 0.6
 			{ name = "Construction rate increased" value = 1 } # make go up to 6
 			{ name = "Repair rate increased" value = 1 } # make go up to 3.5
 			{ name = "crit mod disabled hidden"     value = 0 } # will go back up to 1
+			#{ name = "projectile penetration"     value = IsInMedievalMode() ? 0 : 1 } # THIS MAY BREAK BECAUSE OF MEDIEVAL SHENANIGANS
 		]
 		local player_attributes = [
 			{ name = "metal regen"					value = 1000 }
@@ -8060,8 +8257,8 @@ RegisterEvent("player_spawn", function(params) {
 			{ id = 141 attributes = primary_attributes } # frontier justice
 			{ id = 588 attributes = primary_attributes } # pomson
 			# SECONDARIES
-			{ id = 528 attributes = primary_attributes weight = 0.5 } # the short circuit is not a primary but is used like one here
-			{ id =  22 attributes = primary_attributes } # give the pistol as well to further reduce short circuit likelyhood
+			#{ id = 528 attributes = primary_attributes weight = 0.5 } # the short circuit is not a primary but is used like one here
+			{ id =  22 attributes = primary_attributes } # give them the pistol because why not
 		]
 		# short circuit as primary support
 		::GivePlayerWeaponBaseSlotOnSlotList <- true
@@ -8192,270 +8389,6 @@ RegisterEvent("player_spawn", function(params) {
 			}
 		})
 	}
-	::PVEDisableMVM <- function() {
-		local e = Entities.FindByClassname(null, "tf_logic_mann_vs_machine")
-		if (e) {
-			SteamIDInfoMessage.push("\x07FFFF00mvm to ctf conversion is still experimental.")
-			::PVEForceDisable <- false
-			::PVEMvmUpgrades <- true
-			::PVEDisabled <- false
-			::PVEAddTimer <- true # test
-			::PVEUpgradeIncludeSpawnrooms <- true
-			if (NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_iRoundState") == 10) {
-				if (PVEIsOnDedicatedServer) {
-					Convars.SetValue("mp_tournament_readymode", 1)
-					NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingMannVsMachine", false)
-				}
-				TournamentStart()
-			}
-			RunNextStep(function(){
-			RunNextStep(function(){
-			RunNextStep(function(){
-				# these entities are preserved so they only need to be deleted once.
-				EntFire("tf_logic_mann_vs_machine", "Kill", "", 0, null)
-				EntFire("info_populator", "Kill", "", 0, null)
-				RunNextStep(function(){
-					EntFire("func_upgradestation", "Kill", "", 0, null)
-					RunNextStep(function(){
-						NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingMannVsMachine", false)
-						NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingHybrid_CTF_CP", true)
-						NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 1 /*TF_GAMETYPE_CTF*/)
-						RunCommand("sv_visiblemaxplayers -1")
-						RunNextStep(function(){
-							RunCommand("mp_tournament_restart")
-							RunCommand("tf_bot_kick all")
-							PVEClassOptions.dane_extra.bot_attributes <- Constants.FTFBotAttributeType.AGGRESSIVE
-							RunNextStep(function(){
-								PVERemoveUpgradeFN()
-								RunNextStep(PVEAddUpgradeFN)
-								#NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_iRoundState", 1)
-								Convars.SetValue("mp_tournament", 0)
-								Convars.SetValue("tf_flag_caps_per_round", 1)
-								#::PVEPointCenter <- Entities.FindByClassname(null "func_capturezone")
-								#::PVEPointCenterRadius <- 640 * 2.5
-								#::ISVSH <- true # need to rename this variable
-								RunNextStep(function(){
-									PVELoadClassConfig("stock")
-									//PVEClassOptions.dane_extra.cosmetics <- []
-									//PVEClassOptions.dane_extra.model <- "models/bots/engineer/bot_engineer.mdl"
-									RunNextStep(function(){
-										PVELoadClassConfig("dane_extra")
-										RunNextStep(function(){
-											PVECalcHumanBotCount()
-											RunNextStep(function(){
-												try {
-													__TEMP_SET_MP__(PVEHumanCount + PVEBotCount)
-												} catch (e) {
-													# just dont complain
-													//if (!PVEIsOnDedicatedServer) {
-													//	ClientPrint(null, 3, e)
-													//	ClientPrint(null, 3, "if mayplayers is less than 70, you can ignore this")
-													//}
-												}
-											})
-										})
-									})
-								})
-							})
-						})
-					})
-				})
-				RegisterEvent("teamplay_round_start", function(params) {
-					for (local e; e = Entities.FindByClassname(e, "func_capturezone");) {
-						if (e.GetTeam() != PVEBotTeam) {
-							local f = Entities.CreateByClassname("func_capturezone")
-							f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
-							f.SetOrigin(e.GetOrigin())
-							f.SetAbsAngles(e.GetAbsAngles())
-							PrecacheModel(e.GetModelName())
-							f.SetModel(e.GetModelName())
-							f.SetTeam(PVEBotTeam)
-							f.DispatchSpawn()
-						}
-					}
-					# enable all bot hints avaliable
-					EntFire("bot_hint*", "enable", "", 0, null)
-					EntFire("bot_hint*", "setteam", PVEBotTeam.tostring(), 0, null)
-					EntFire("item_teamflag", "SetReturnTime", "0", 5, null)
-					RunNextStep(function(){
-						ForeachBot(function(b){ UTILBotSetMissionSafe(b, 0, true) })
-					})
-					if ("PVECustomBotHints" in getroottable()) {
-						local hintcount = 0
-						foreach (hint in PVECustomBotHints) {
-							local e = Entities.CreateByClassname("bot_hint_engineer_nest")
-							NetProps.SetPropString(e, "m_iName", "PVEBotHint"+hintcount.tostring())
-							e.SetOrigin(hint.nest_origin)
-							e.SetAbsAngles(hint.nest_angles)
-							e.SetTeam(PVEBotTeam)
-							e.DispatchSpawn()
-							EntFireByHandle(e, "enable", "", 0, e, e)
-							local f = Entities.CreateByClassname("bot_hint_sentrygun")
-							NetProps.SetPropString(f, "m_iName", "PVEBotHint"+hintcount.tostring())
-							NetProps.SetPropBool(f, "m_isSticky", true)
-							f.SetOrigin(hint.gun_origin)
-							f.SetAbsAngles(hint.gun_angles)
-							f.SetTeam(PVEBotTeam)
-							f.DispatchSpawn()
-							EntFireByHandle(f, "enable", "", 0, f, f)
-
-							hintcount += 1
-						}
-					}
-				})
-				RegisterEvent("player_spawn", function(params) {
-					if (PVEDisabled || Uncletopia1kuAccurate) return;
-					local player = GetPlayerFromUserID(params.userid)
-					PVEPlayerSetRobotModel(player)
-				})
-				RegisterEvent("post_inventory_application", function(params) {
-					if (PVEDisabled || Uncletopia1kuAccurate) return;
-					for (local e; e=Entities.FindByClassname(e, "tf_wearable");) {
-						if (e.GetOwner() && !e.GetOwner().IsFakeClient()) {
-							local id = NetProps.GetPropInt(e, "m_AttributeManager.m_Item.m_iItemDefinitionIndex")
-							if ([231 642 608 405 444 133].find(id) == null) {
-								e.Kill()
-							}
-						}
-					}
-				})
-				::PVEFlagResetPositionFN <- function(){
-					if (!("PVEFlagResetPosition" in getroottable())) return
-					#EntFireByHandle(PVEIntelHandle, "ForceResetSilent", "", 1, PVEIntelHandle, PVEIntelHandle)
-					# extra delay so we move the flag after it has reset
-					RunInNSeconds(1.5, function(){
-							PVEIntelHandle.SetAbsOrigin(PVEFlagResetPosition)
-							EntFireByHandle(PVEIntelHandle, "Enable", "", 1, PVEIntelHandle, PVEIntelHandle)
-					})
-				}
-				RegisterEvent("teamplay_round_start", function(params) {
-					if (!PVEIntelHandle || !PVEIntelHandle.IsValid())
-						::PVEIntelHandle <- null
-					if (!PVEIntelHandle)
-						::PVEIntelHandle <- Entities.FindByName(null, "intel")
-					if (!PVEIntelHandle)
-						::PVEIntelHandle <- Entities.FindByName(null, "classic_mode_intel")
-					if (!PVEIntelHandle)
-						::PVEIntelHandle <- Entities.FindByClassname(null, "item_teamflag")
-					if (!PVEIntelHandle) {
-						::PVEIntelHandle <- Entities.CreateByClassname("item_teamflag")
-						PVEIntelHandle.SetTeam(PVEHumanTeam)
-						EntFireByHandle(PVEIntelHandle, "enable", "", 5, PVEIntelHandle, PVEIntelHandle)
-						NetProps.SetPropInt(PVEIntelHandle, "m_nType", 1) # TF_FLAGTYPE_ATTACK_DEFEND
-						if ("PVEFlagResetPosition" in getroottable())
-							PVEIntelHandle.SetAbsOrigin(PVEFlagResetPosition)
-						PVEIntelHandle.DispatchSpawn()
-					}
-					PVEFlagResetPositionFN()
-					if (!IsInWaitingForPlayers())
-						EntFire("team_round_timer", "SetTime", "1", 1, null)
-					if (!IsInWaitingForPlayers())
-						for (local e; e = Entities.FindByClassname(e, "func_respawnroom");) {
-							local f = SpawnEntityFromTable("trigger_add_tf_player_condition",{
-								origin     = e.GetOrigin()
-								angles     = e.GetAbsAngles()
-								condition  = 51
-								duration   = -1
-								spawnflags = 1 // allow players only
-							})
-							f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
-							PrecacheModel(e.GetModelName())
-							f.SetModel(e.GetModelName())
-							f.SetTeam(e.GetTeam())
-							f.SetSolid(e.GetSolid())
-							#f.DispatchSpawn()
-							RunNextStep(function(){
-								NetProps.SetPropInt(f, "m_nCondition", 51)
-								NetProps.SetPropFloat(f, "m_flDuration", -1)
-							})
-						}
-				})
-				RegisterEvent("teamplay_flag_event", function(params) {
-					if (!PVERunning || !PVEIntelHandle || !PVEIntelHandle.IsValid() || !PVEShouldUncletopiaCTFChangesBeEnabled()) return
-					switch (params.eventtype) {
-						case 2: # TF_FLAGEVENT_CAPTURE
-						case 5: # TF_FLAGEVENT_RETURNED
-						case 4: # TF_FLAGEVENT_DROPPED
-							RunNextStep(PVEFlagResetPositionFN)
-							break;
-						case 1: # TF_FLAGEVENT_PICKUP
-						case 3: # TF_FLAGEVENT_DEFEND
-						default: # IDK
-							break;
-					}
-				})
-			})
-			})
-			})
-		} else {
-			Convars.SetValue("mp_tournament", 0)
-		}
-	}
-	RunNextStep(function(){RunNextStep(function(){RunNextStep(PVEDisableMVM)})})
-	# turn arena into koth
-	::PVEArenaHijack <- false
-	RunNextStep(function(){
-		RunNextStep(function(){
-			if (NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") == 4) { # ARENA
-				SteamIDInfoMessage.push("\x07FFFF00arena to koth conversion is still experimental.")
-				::PVEArenaHijack <- true
-				::PVEUpgradeIncludeSpawnrooms <- true
-				NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingKoth", true)
-				NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 2) # CP
-			}
-		})
-	})
-	RegisterEvent("teamplay_round_start", function(params) {
-		if (!PVEArenaHijack) return;
-		local arena = Entities.FindByClassname(null, "tf_logic_arena")
-		foreach (output in ["OnArenaRoundStart" "OnCapEnabled"]) {
-			local count = EntityOutputs.GetNumElements(arena, output)
-			for (local i=0; i < count; i++) {
-				local table = {}
-				EntityOutputs.GetOutputTable(arena, output, table, i)
-				EntFire(table.target, table.input, table.parameter, table.delay, arena)
-			}
-		}
-		RunNextStep(function(){
-			arena.Kill()
-			NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingKoth", true)
-			NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 2) # CP
-			local area = Entities.FindByClassname(null, "trigger_capture_area")
-			local koth = Entities.CreateByClassname("tf_logic_koth")
-			NetProps.SetPropString(koth, "m_iName", "tf_logic_koth")
-			NetProps.SetPropInt(koth, "m_nTimeToUnlockPoint", 0)
-			koth.DispatchSpawn()
-			EntFire("tf_logic_koth", "RoundSpawn", "", 0, null)
-			EntFire("tf_logic_koth", "RoundActivate", "", 1, null)
-			EntFire("tf_gamerules", "SetBlueTeamGoalString", "#koth_setup_goal", 0, null)
-			EntFire("tf_gamerules", "SetRedTeamGoalString", "#koth_setup_goal", 0, null)
-			EntityOutputs.AddOutput(area, "OnCapTeam1", "tf_gamerules", "SetRedKothClockActive", "", 0, -1)
-			EntityOutputs.AddOutput(area, "OnCapTeam2", "tf_gamerules", "SetBlueKothClockActive", "", 0, -1)
-			RunNextStep(function(){
-				::PVEFakeSetupTimeStart <- 1
-				if (!IsInWaitingForPlayers())
-					for (local e; e = Entities.FindByClassname(e, "func_respawnroom");) {
-						local f = SpawnEntityFromTable("trigger_add_tf_player_condition",{
-							origin     = e.GetOrigin()
-							angles     = e.GetAbsAngles()
-							condition  = 51
-							duration   = -1
-							spawnflags = 1 // allow players only
-						})
-						f.SetSize(e.GetBoundingMins(), e.GetBoundingMaxs())
-						PrecacheModel(e.GetModelName())
-						f.SetModel(e.GetModelName())
-						f.SetTeam(e.GetTeam())
-						f.SetSolid(e.GetSolid())
-						#f.DispatchSpawn()
-						RunNextStep(function(){
-							NetProps.SetPropInt(f, "m_nCondition", 51)
-							NetProps.SetPropFloat(f, "m_flDuration", -1)
-						})
-					}
-			})
-		})
-	})
 	# make engies build on passtime
 	RegisterEvent("teamplay_round_start", function(params) {
 		if (NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") == 7) { # TF_GAMETYPE_PASSTIME
@@ -8528,11 +8461,11 @@ RegisterEvent("player_spawn", function(params) {
 		KillEnts() # clean up here so edicts are freed as soon as possible
 	})
 	RegisterEvent("teamplay_round_start", function(params) {
-		if (PVEMedievalBetweenRounds) RunNextStep(function(){
-			RunNextStep(function(){
-				RunNextStep(function(){
+		if (PVEMedievalBetweenRounds) RunDelayed(function(){
+			RunDelayed(function(){
+				RunDelayed(function(){
 					NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingMedieval", PVEMedievalEnabledByDefault)
-					RunNextStep(function(){
+					RunDelayed(function(){
 						ForeachHuman(function(p){
 							RunDelayed(function(){
 								if (p && p.IsValid())
@@ -8547,7 +8480,7 @@ RegisterEvent("player_spawn", function(params) {
 	RegisterCommand("!restart", function(player, args) {
 		#if (PVEMedievalBetweenRounds)
 		#	NetProps.SetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bPlayingMedieval", true)
-		Convars.SetValue("mp_restartgame", 5)
+		Convars.SetValue("mp_restartgame", 1)
 	}, " - Restart the current round")
 	RegisterCommand("!rb", function(player, args) {
 		ForeachBot(function(b){
@@ -8566,7 +8499,6 @@ RegisterEvent("player_spawn", function(params) {
 				::PVEWasCp <- true
 				NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 0 /*TF_GAMETYPE_UNKNOWN*/)
 				NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nHudType", 2 /*TF_HUDTYPE_CP*/)
-				#NetProps.SetPropBool(Entities.FindByClassname(null, "team_control_point_master"), "m_bSwitchTeamsOnWin", true) # force as attack / defend (breaks forcelinear)
 			}
 		})
 	})
@@ -8595,40 +8527,38 @@ RegisterEvent("player_spawn", function(params) {
 	::TEMPENT <- Entities.FindByClassname(null, "soundent") # abusing soundent for one more thing
 	RegisterEvent("OnScriptHook_OnTakeDamage", function(params) {
 		if (PVEDisabled || !Mv1kUChangesEnabled) return;
-		if ("inflictor" in params && params.inflictor.GetClassname() == "obj_sentrygun") {
+		if ("inflictor" in params && params.inflictor.GetClassname() == "obj_sentrygun" && "const_entity" in params && params.const_entity.GetTeam() == TEAM_BLU) {
 			TEMPENT.SetAbsOrigin(params.inflictor.GetOrigin())
 			params.inflictor <- TEMPENT
 		}
 	})
 
-	# make gas passer only do one explosion per throw
-	# todo: this is broken (again)
-	::PVEGasPasserNerf <- false
+	# make gas passer only do one explosion per throw (only mv1ku for now)
+	::PVEGasPasserNerf <- false # TEST BEFORE USE
 	RegisterEvent("gas_doused_player_ignited", function(params) {
 		if (PVEDisabled || !PVEGasPasserNerf || !Mv1kUChangesEnabled) return;
 		local douser = PlayerInstanceFromIndex(params.douser)
+		if (!douser || !douser.IsValid() || !WeaponSlotGet(douser, 1).GetAttribute("explode_on_ignite", 0)) return; # ignore non exploding canisters
 		local victim = PlayerInstanceFromIndex(params.victim)
 		local gascond = Constants.ETFCond.TF_COND_GAS
 		local gasstr = "m_Shared.m_ConditionData." + gascond.tostring() + ".m_pProvider"
-		RunNextStep(function(){
 		ForeachPlayer(function(p) {
 			if (p != victim && p.InCond(gascond)) {
-				if (NetProps.GetPropEntity(p, gasstr)) {
+				if (NetProps.GetPropEntity(p, gasstr) == douser) {
 					p.RemoveCond(gascond)
 				}
 			}
 		})
-		})
-		for (local e; e=Entities.FindByClassname(e, "tf_gas_manager");) {
+		# kill cloud after one explosion
+		for (local e; e = Entities.FindByClassname(e, "tf_gas_manager");) {
 			if (e.GetOwner() == douser) {
-				#printl(e)
 				NetProps.SetPropInt(e, "m_iHealth", 0)
 				e.Kill()
 			}
 		}
 	})
 
-	# reduce chat spam (2 lines less per bot than before)
+	# reduce bot join chat spam (2 lines less per bot than before)
 	::RENAMENEWESTBOT <- null
 	RegisterEvent("player_initial_spawn", function(params) {
 		local player = PlayerInstanceFromIndex(params.index)
@@ -8882,9 +8812,19 @@ RegisterEvent("player_spawn", function(params) {
 
 	CollectEventSetup() // new events are hooked in here so recollect all events
 
-	# TEMP, MOVE THIS SOMEWHERE BETTER
-	# clean up some persistant entities here
-	//foreach (classname in ["tf_mann_vs_machine_stats" "tf_logic_medieval" "env_sun"]) EntFire(classname, "Kill", "", 0, null)
+	// fix
+	RunDelayed(function(){
+	RunDelayed(function(){
+	RunDelayed(function(){
+	RunDelayed(function(){
+		# fix fix fix?
+		PVEAddUpgradeFN()
+		PVERemoveUpgradeFN()
+		PVEAddUpgradeFN()
+	})
+	})
+	})
+	})
 }
 # has ApplyBase1kuPreset been called before
 ::PresetAppliedBase1ku <- false
@@ -8897,7 +8837,7 @@ RegisterEvent("player_spawn", function(params) {
 ::Apply1kuPreset <- function(player=null, args=null) {
 	if (MaxClients().tointeger() - GetHumanCount() >= 40 && MaxClients().tointeger() < 64 && PVEBotCountOverride <= 0) {
 		::PVEBotCountOverride <- 40
-	} else if (MaxClients().tointeger() - GetHumanCount() < 40) {
+	} else if (MaxClients().tointeger() - GetHumanCount() < 40 && PVEBotCountOverride <= 0) {
 		::PVEBotCountOverride <- MaxClients().tointeger() - GetHumanCount()
 		ClientPrint(player, 3, format("maxplayers is less than %d!", 40 + GetHumanCount()))
 		ClientPrint(player, 3, "only adding " + PVEBotCountOverride.tostring() + " bots.")
@@ -8962,10 +8902,11 @@ RegisterEvent("player_spawn", function(params) {
 	::Uncletopia1kuAccurate <- true
 	::Mv1kUChangesEnabled <- false
 	::PVEMvmUpgrades <- false
-	PVEAddUpgradeFN()
-	PVERemoveUpgradeFN()
+	::PVEDoNotAggroOnHealthbar <- false # original uncles dont care about truces
 	if (PresetAppliedBase1ku) {
 		PVELoadClassConfig("dane")
+		PVEAddUpgradeFN()
+		PVERemoveUpgradeFN()
 		return;
 	}
 	::GivePlayerWeaponRecycleNew <- false # original 1ku does not recycle weapons
@@ -8976,7 +8917,7 @@ RegisterEvent("player_spawn", function(params) {
 ::Applymv1kuPreset <- function(player=null, args=null){
 	if (MaxClients().tointeger() - GetHumanCount() >= 40 && MaxClients().tointeger() < 64 && PVEBotCountOverride <= 0) {
 		::PVEBotCountOverride <- 40
-	} else if (MaxClients().tointeger() - GetHumanCount() < 40) {
+	} else if (MaxClients().tointeger() - GetHumanCount() < 40 && PVEBotCountOverride <= 0) {
 		::PVEBotCountOverride <- MaxClients().tointeger() - GetHumanCount()
 		ClientPrint(player, 3, format("maxplayers is less than %d!", 40 + GetHumanCount()))
 		ClientPrint(player, 3, "only adding " + PVEBotCountOverride.tostring() + " bots.")
@@ -8985,10 +8926,10 @@ RegisterEvent("player_spawn", function(params) {
 	::Uncletopia1kuAccurate <- false
 	::Mv1kUChangesEnabled <- true
 	::PVEMvmUpgrades <- true
-	PVEAddUpgradeFN()
-	PVERemoveUpgradeFN()
 	if (PresetAppliedBase1ku) {
 		PVELoadClassConfig("dane_extra")
+		PVEAddUpgradeFN()
+		PVERemoveUpgradeFN()
 		return;
 	}
 	::SteamIDInfoMessage <- [
@@ -8998,7 +8939,7 @@ RegisterEvent("player_spawn", function(params) {
 }
 RegisterCommand("!1ku", Apply1kuPreset, "init 1ku")
 RegisterCommand("!mv1ku", Applymv1kuPreset, "init mv1ku")
-::PVE1kuChallenges <- { #TODO: TEST IF THIS WORKS FOR MV1KU
+::PVE1kuChallenges <- {
 	full = {
 		modifier = function(){
 			::PVEBotCountOverride <- MaxClients().tointeger() - GetHumanCount()
@@ -9189,38 +9130,27 @@ RegisterCommand("!showall", function(player, args) {
 }, "Enable glow for all players")
 # todo: add more info to this
 RegisterCommand("!mapinfo", function(player, args) {
-	# for testing
-	# script NetProps.SetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType", 3) # pl
-
 	local gamerules = Entities.FindByClassname(null, "tf_gamerules")
 	local gametype = NetProps.GetPropInt(gamerules, "m_nGameType")
 	local hudtype = NetProps.GetPropInt(gamerules, "m_nHudType")
 
-	ClientPrint(player, 3, format("GameType: %s [%d]",
-		[
-			"TF_GAMETYPE_UNDEFINED",
-			"TF_GAMETYPE_CTF",
-			"TF_GAMETYPE_CP",
-			"TF_GAMETYPE_ESCORT",
-			"TF_GAMETYPE_ARENA",
-			"TF_GAMETYPE_MVM",
-			"TF_GAMETYPE_RD",
-			"TF_GAMETYPE_PASSTIME",
-			"TF_GAMETYPE_PD",
-			"TF_GAMETYPE_COUNT",
-		][gametype],
-		gametype
+	ClientPrint(player, 3, format("GameType: %s [%d]", ["TF_GAMETYPE_UNDEFINED"
+		"TF_GAMETYPE_CTF"
+		"TF_GAMETYPE_CP"
+		"TF_GAMETYPE_ESCORT"
+		"TF_GAMETYPE_ARENA"
+		"TF_GAMETYPE_MVM"
+		"TF_GAMETYPE_RD"
+		"TF_GAMETYPE_PASSTIME"
+		"TF_GAMETYPE_PD"
+		"TF_GAMETYPE_COUNT" ][gametype], gametype
 	))
-	ClientPrint(player, 3, format("HudType: %s [%d]",
-		[
-			"TF_HUDTYPE_UNDEFINED",
-			"TF_HUDTYPE_CTF",
-			"TF_HUDTYPE_CP",
-			"TF_HUDTYPE_ESCORT",
-			"TF_HUDTYPE_ARENA",
-			"TF_HUDTYPE_TRAINING",
-		][hudtype],
-		hudtype
+	ClientPrint(player, 3, format("HudType: %s [%d]", [ "TF_HUDTYPE_UNDEFINED"
+		"TF_HUDTYPE_CTF"
+		"TF_HUDTYPE_CP"
+		"TF_HUDTYPE_ESCORT"
+		"TF_HUDTYPE_ARENA"
+		"TF_HUDTYPE_TRAINING" ][hudtype], hudtype
 	))
 	ClientPrint(player, 3, "IsAttackDefenseMode: " + IsAttackDefenseMode().tostring())
 	ClientPrint(player, 3, "IsInKothMode: " + IsInKothMode().tostring())
@@ -9239,34 +9169,38 @@ RegisterEvent("server_cvar", function(params) {
 	}
 })
 
-if (PVEIsOnDedicatedServer) {
-	::DebugDrawCircle <- function(center, rgb, alpha, radius, ztest, duration) {}
-}
-
 ::PVEScrambled <- false
+::PVEScrambleAllowBothTeamsToWin <- true # EXPERIMENTAL 2
 # scrambleteam support (EXPERIMENTAL)
 RegisterEvent("teamplay_alert", function(params) {
-	if (params.alert_type == 0) { # HUD_ALERT_SCRAMBLE_TEAMS
+	if (!PVEDisabled && params.alert_type == 0) { # HUD_ALERT_SCRAMBLE_TEAMS
 		#ClientPrint(null, 3, "Scrambling teams...")
+		if (PVEDebugPrint) printl("[PVESCRAMBLE]")
 		::PVEHumanTeam <- TEAM_ATTACK
 		::PVEBotTeam <- TEAM_DEFEND
 		::PVEMoveTeamDisabled <- true
 		::PVEAllowHumansInBotTeam <- true
 		::PVEForceBotSpawnLocationDisabled <- false
-		::PVEScrambled <- true
 		::PVEAllowBotsInNonBotTeam <- true
 		::PVETreatNonCosmeticRedPlayersAsBots <- false
+		::PVEDoNotAggroOnHealthbar <- false
 		Convars.SetValue("mp_humans_must_join_team", "any")
 		#Convars.SetValue("mp_autoteambalance", 1)
 		#Convars.SetValue("mp_teams_unbalance_limit", 1)
 		Convars.SetValue("mp_forceautoteam", 0)
 		::PVERedImmediateRespawn <- false
 		::PVEBluImmediateRespawn <- false
-		#::PVEDisableCtfRED <- false
-		#::PVEUncletopiaCTFChanges <- false
 		::PVEEnableFakeSetup <- false
 		::PVEForceEnableFakeSetup <- false
 		::PVEFakeSetupTimeStart <- 1
+		::PVEFakeSetupTime <- 6
+		::PVEScrambled <- true
+		::PVECurrencyMode <- CurrencyMode.GLOBAL # team and individual break
+		if (PVEScrambleAllowBothTeamsToWin) {
+			::PVEDontCountUp <- true
+			::PVEDisableCtfRED <- false
+			::PVEUncletopiaCTFChanges <- false
+		}
 	}
 })
 
@@ -9508,8 +9442,6 @@ if (MaxClients().tointeger() > 70) {
 				__TEMP_SET_MP__(PVEHumanCount + PVEBotCount)
 				PVEClassOptions.dane.cosmetics <- []
 				PVEClassOptions.dane_extra.cosmetics <- []
-				#::PVEReduceSpawnpointsBotOnly <- true
-				#::PVEReduceSpawnpoints <- true
 				::PVEMPActive <- true
 				Convars.SetValue("mp_tournament_whitelist", "1ku_item_whitelist.txt")
 				RunNextStep(PVETryEnableTournament)
@@ -9721,34 +9653,44 @@ if (MaxClients().tointeger() > 70) {
 	}, " - Restart the current round")
 }
 
-::DBGEntPrint <- false
+::DBGEntPrint <- 0
+::DBGEntPrintRegistered <- false
 ::DBGEntCount <- 0
 ::DBGEntBuffer <- []
-RegisterEvent("PreUpdate", function(params) { // TODO: measure memory / performance impact of this
-	if (!DBGEntPrint) return;
-	::DBGEntCount <- 1
-	local buf = []
-	local e = Entities.First()
-	while (e = Entities.Next(e)) {
-		::DBGEntCount <- DBGEntCount + 1
-		buf.push(e)
-		if (DBGEntBuffer.find(e) == null) {
-			if (DBGEntPrint == 2) {
-				ClientPrint(null, 3, e.tostring())
-			} else {
-				printl(e)
+RegisterCommand("!dbgents", function(player, args) {
+	if (!DBGEntPrintRegistered) {
+		RegisterEvent("PreUpdate", function(params) { // TODO: measure memory / performance impact of this
+			if (!DBGEntPrint) return;
+			::DBGEntCount <- 1
+			local buf = []
+			local e = Entities.First()
+			while (e = Entities.Next(e)) {
+				::DBGEntCount <- DBGEntCount + 1
+				buf.push(e)
+				if (DBGEntBuffer.find(e) == null) {
+					if (DBGEntPrint == 2) {
+						ClientPrint(null, 3, e.tostring())
+					} else {
+						printl(e)
+					}
+				}
 			}
-		}
+			::DBGEntBuffer <- buf
+			//printl(DBGEntCount)
+			ClientPrint(null, 4, DBGEntCount.tostring())
+		})
+		::DBGEntPrintRegistered <- true
+		CollectEventSetup()
 	}
-	::DBGEntBuffer <- buf
-	//printl(DBGEntCount)
-	ClientPrint(null, 4, DBGEntCount.tostring())
+	::DBGEntPrint <- (DBGEntPrint + 1) % 3
 })
 
 ::TournamentStart <- function(restart = true){
 	Convars.SetValue("tf_mvm_min_players_to_start", 1)
 	Convars.SetValue("mp_tournament_readymode", 1)
+	RunCommand("mp_tournament_readymode 1") # fallback
 	Convars.SetValue("mp_tournament_post_match_period", 10)
+	RunCommand("mp_tournament_post_match_period 10") # fallback
 
 	local GameRules = Entities.FindByClassname(null, "tf_gamerules")
 	local MAX_TEAMS_ARRAY_SAFE = 32 # constant from tf2 sdk
@@ -9921,7 +9863,7 @@ RegisterCommand("!bomb", function(player, args) {
 })
 
 
-# fix for wrangler fix
+# fix for wrangler patch
 RegisterEvent("post_inventory_application", function(params){
 	RunInNSeconds(1, function(){
 		local player = GetPlayerFromUserID(params.userid);
@@ -9949,7 +9891,7 @@ RegisterEvent("post_inventory_application", function(params){
 				if (player.GetActiveWeapon() != self) return 1 # wait paitently
 				if (mygun) {
 					local ammo = NetProps.GetPropInt(mygun, "m_iAmmoShells")
-					NetProps.SetPropIntArray(player, "m_iAmmo", ammo > 0 ? ammo : 1, 2) # set secondary ammo to shells owned
+					NetProps.SetPropIntArray(player, "m_iAmmo", ammo > 0 ? ammo : 1, 2) # set secondary ammo to shells in the sentry
 				} else {
 					NetProps.SetPropIntArray(player, "m_iAmmo", 1, 2) # we dont have a sentry so make ammo almost empty
 				}
@@ -9959,6 +9901,250 @@ RegisterEvent("post_inventory_application", function(params){
 			break;
 		}
 	})
+})
+
+::DBGDrawTracksRegistered <- false
+::DBGDrawTracksEnabled <- false
+RegisterCommand("!dbgtracks", function(player, args){
+	if (PVEIsOnDedicatedServer) {
+		ClientPrint(player, 3, "Can not display track information on a dedicated server.")
+		ClientPrint(player, 3, "Please run this locally to debug track elements.")
+		return;
+	}
+	if (!DBGDrawTracksRegistered) RegisterEvent("Update", function(player={}, args={}) {
+		if (!DBGDrawTracksEnabled) return;
+		for (local e; e=Entities.FindByClassname(e, "path_track");) {
+			local next = NetProps.GetPropEntity(e, "m_pnext")
+			local alt = NetProps.GetPropEntity(e, "m_paltpath")
+			local prev = NetProps.GetPropEntity(e, "m_pprevious")
+			if (next)
+				DebugDrawLine(e.GetOrigin(), next.GetOrigin(), 128, 255, 192, true, FrameTime() * 2)
+			if (alt)
+				DebugDrawLine(e.GetOrigin(), next.GetOrigin(), 255, 192, 128, true, FrameTime() * 2)
+			DebugDrawBox(e.GetOrigin(), Vector(-6, -6, -6), Vector(6, 6, 6), next == null ? 255 : 128, prev == null ? 255 : 128, alt == null ? 128 : 255, 128, FrameTime() * 2)
+			DebugDrawText(e.GetOrigin(), e.tostring(), true, FrameTime())
+		}
+		if ("PayloadData" in getroottable()) foreach(k, v in PayloadData) {
+			DebugDrawCircle(v.pos, v.removed ? Vector(128, 0, 0) : (v.watched_track_point ? Vector(255, 0, 255): (v.watched_track ? (v.special ? Vector(255, ((v.flags & 0x20) != 0) ? 255 : 128, ((v.flags & 0x40) != 0) ? 255 : 128) : Vector(64, 64, 64)) : Vector(64, 96, 128))), ((v.flags & 1) != 0) ? 0 : 128, v.ent != null ? 16 : 8, false, FrameTime() * 2)
+			if (v.next) DebugDrawLine(v.pos, PayloadData[v.next].pos, 192, 255, 128, true, FrameTime() * 2)
+		}
+	})
+	::DBGDrawTracksRegistered <- true
+	::DBGDrawTracksEnabled <- !DBGDrawTracksEnabled
+}, "Toggle drawing debug infos for the dynamic track loading system")
+
+# inspired from uncletopia strippers: remove path_track entites after reaching their control points
+::PayloadLastPassedTrack <- null
+# safe: only remove track elements after points are captured (crashes on frontier)
+::PayloadCleanupSafe <- GetMapName() != "pl_frontier_final" // todo: do not hardcode
+# extreme: only keep 3 tracks in front and behind the train (unstable on multistage maps)
+::PayloadCleanupExperimental <- false # GetMapName() != "pl_frontier_final" // todo: Set on more maps
+if (!("PayloadData" in getroottable()))
+	::PayloadData <- {}
+RegisterEvent("MapReset", function(params) { # multistage payload cleanup
+	if (PVEDisabled || ("HasHadMultipleTrains" in getroottable() && HasHadMultipleTrains) || NetProps.GetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bMultipleTrains"))
+		return; # plr failsafe
+	if (!PayloadCleanupExperimental) return; // multistage madness
+	for (local e; e = Entities.FindByClassname(e, "team_train_watcher");) {
+		local track = Entities.FindByName(null, NetProps.GetPropString(e, "m_iszStartNode"))
+		if (!track) continue;
+		local id = NetProps.GetPropInt(track, "m_iHammerID")
+		TrackDeleteFull(PayloadData[PayloadData[id].next].nnext, false, 2) # always keep the first elements
+
+		# ensure the path always exists (hoodoo,goldrush stage 2 + 3)
+		RunDelayed(function(){
+			TrackInsert(PayloadData[id].next)
+			TrackInsert(PayloadData[id].nnext)
+		})
+	}
+})
+RegisterEvent("MapResetPrePoints", function(params) {
+	if (!("RESET" in params && params.RESET)) {
+		// the round changed but the map did not reset.
+		// do not try to relink the paths!!!
+		return;
+	}
+	try {
+		PayloadData.clear()
+		for (local e; e=Entities.FindByClassname(e, "path_track");) {
+			#printl(e)
+			local prev_ = NetProps.GetPropEntity(e, "m_pprevious")
+			local previd = prev_ != null ? NetProps.GetPropInt(prev_, "m_iHammerID") : 0
+			local next_ = NetProps.GetPropEntity(e, "m_pnext")
+			local nextid = next_ != null ? NetProps.GetPropInt(next_, "m_iHammerID") : 0
+			local alt_ = NetProps.GetPropEntity(e, "m_paltpath")
+			local altid = alt_ != null ? NetProps.GetPropInt(alt_, "m_iHammerID") : 0
+			local hammerid = NetProps.GetPropInt(e, "m_iHammerID")
+
+			if (altid != 0) {
+				// todo: fix this if this error ever actually shows up
+				printl("DID NOT EXPECT A TRACK ELEMENT WITH AN ALTERNATIVE PATH!!!")
+			}
+
+			PayloadData[hammerid] <- {
+				id=hammerid
+				prev = previd
+				next = nextid
+				pprev = 0
+				nnext = 0
+				alt = altid
+				name = NetProps.GetPropString(e, "m_iName")
+				flags = NetProps.GetPropInt(e, "m_spawnflags") # save if downhill, etc.
+				speed = NetProps.GetPropFloat(e, "speed")
+				length = NetProps.GetPropFloat(e, "m_length")
+				radius = NetProps.GetPropFloat(e, "m_flRadius")
+				orientation = NetProps.GetPropInt(e, "m_eOrientationType")
+				special = (EntityOutputs.GetNumElements(e, "OnPass") != 0) || (EntityOutputs.GetNumElements(e, "OnTeleport") != 0) || (NetProps.GetPropInt(e, "m_spawnflags") > 1)
+				removed = false
+				pos = e.GetOrigin()
+				ang = e.GetAbsAngles()
+				ent = e
+				watched_track = false // The track is for a payload
+				watched_track_point = false // The track is for a payload point
+			}
+		}
+		foreach (hammerid, v in PayloadData) {
+			if (v.prev) v.pprev <- PayloadData[v.prev].prev
+			if (v.next) v.nnext <- PayloadData[v.next].next
+		}
+		for (local e; e = Entities.FindByClassname(e, "team_train_watcher");) {
+			local temp = e
+			RunNextStep(function() {
+				for (local i=0; i < 8;i++) {
+					local trackname = NetProps.GetPropString(temp, "m_iszLinkedPathTracks[" + i.tostring() +"]")
+					if (trackname != null && trackname != "") {
+						local f = Entities.FindByName(null, trackname)
+						if (f && f.IsValid()) {
+							PayloadData[NetProps.GetPropInt(f, "m_iHammerID")].special <- true
+							PayloadData[NetProps.GetPropInt(f, "m_iHammerID")].watched_track_point <- true
+						}
+					}
+				}
+			})
+			local track = Entities.FindByName(null, NetProps.GetPropString(e, "m_iszStartNode"))
+			if (!track) continue;
+			local id = NetProps.GetPropInt(track, "m_iHammerID")
+			local data = PayloadData[id]
+			while (data) {
+				data.watched_track <- true
+				data = data.next != 0 ? PayloadData[data.next] : null
+			}
+		}
+	} catch (e) {
+		ClientPrint(params, 3, "PayloadCleanupExperimental encountered an error: " + e.tostring())
+		PayloadData.clear()
+	}
+})
+// If the track is a start element or has outputs, it may be referenced somewhere else
+::TrackIsRelevant <- function(hammerid) {
+	if (hammerid == 0 || !(hammerid in PayloadData)) return true; // do not try to modify invalid elements
+	local element = PayloadData[hammerid]
+	return !element.watched_track || element.special || (element.prev == 0) || (element.next == 0)
+}
+// ensure a track element exists
+::TrackInsert <- function(hammerid) {
+	if (!hammerid || !(hammerid in PayloadData)) return;
+	local track = PayloadData[hammerid]
+	if (track.removed || (track.ent && track.ent.IsValid())) return;
+	local previous = PayloadData[track.prev]
+	while (!previous.ent || !previous.ent.IsValid()) {
+		if (previous.prev) previous = PayloadData[previous.prev]
+		else {
+			previous = null
+			break;
+		}
+	}
+	previous = previous != null ? previous.ent : null
+	local next = previous != null ? NetProps.GetPropEntity(previous, "m_pnext") : null
+	local e = Entities.CreateByClassname("path_track")
+	e.DispatchSpawn()
+	NetProps.SetPropInt(e, "m_iHammerID", track.id)
+	NetProps.SetPropString(e, "m_iName", track.name)
+	NetProps.SetPropFloat(e, "speed", track.speed)
+	NetProps.SetPropFloat(e, "m_flRadius", track.radius)
+	NetProps.SetPropFloat(e, "m_length", track.length)
+	NetProps.SetPropInt(e, "m_eOrientationType", track.orientation)
+	NetProps.SetPropEntity(e, "m_pprevious", previous)
+	NetProps.SetPropEntity(e, "m_pnext", next)
+	NetProps.SetPropEntity(next, "m_pprevious", e)
+	NetProps.SetPropEntity(previous, "m_pnext", e)
+	NetProps.SetPropInt(e, "m_spawnflags", track.flags)
+	e.SetAbsOrigin(track.pos)
+	e.SetAbsAngles(track.ang)
+	track.ent <- e
+}
+// remove a track element and correct the neighbour references
+::TrackDelete <- function(hammerid, force=false) {
+	if (!hammerid || !(hammerid in PayloadData)) return;
+	local track = PayloadData[hammerid]
+	if ((!force && TrackIsRelevant(hammerid)) || track.watched_track_point) return;
+	if (!track.prev || !track.next) return;
+	local ent = track.ent
+	if (ent && ent.IsValid()) {
+		// fix links
+		local prev = NetProps.GetPropEntity(ent, "m_pprevious")
+		local next = NetProps.GetPropEntity(ent, "m_pnext")
+		NetProps.SetPropEntity(prev, "m_pnext", next)
+		NetProps.SetPropEntity(next, "m_pprevious", prev)
+
+		track.flags <- NetProps.GetPropInt(ent, "m_spawnflags")
+		ent.Kill()
+	}
+	track.ent <- null
+	if (force) {
+		track.removed <- true
+	}
+}
+::TrackDeleteFull <- function(hammerid, force=false, state=0) {
+	// state 0 means delete both directions
+	// state 1 means delete backwards
+	// state 2 means delete forwards
+	if (!hammerid || !(hammerid in PayloadData)) return;
+	local track = PayloadData[hammerid]
+	TrackDelete(hammerid, force)
+	if (state != 2) { // backwards
+		local t = track
+		while (t.prev) {
+			t = PayloadData[t.prev]
+			TrackDelete(t.id, force)
+		}
+	}
+	if (state != 1) { // forwards
+		local t = track
+		while (t.next) {
+			t = PayloadData[t.next]
+			TrackDelete(t.id, force)
+		}
+	}
+}
+RegisterEvent("path_track_passed", function(params) {
+	::PayloadLastPassedTrack <- EntIndexToHScript(params.index & (Constants.Server.MAX_EDICTS - 1))
+	if (!PayloadCleanupExperimental) return;
+	if (/*PVEDisabled || */("HasHadMultipleTrains" in getroottable() && HasHadMultipleTrains) || NetProps.GetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bMultipleTrains"))
+		return; # plr failsafe
+	local id = NetProps.GetPropInt(PayloadLastPassedTrack, "m_iHammerID")
+	if (!id || !(id in PayloadData)) return;
+	local el = PayloadData[NetProps.GetPropInt(PayloadLastPassedTrack, "m_iHammerID")]
+	// 3 nodes of lookahead are required to prevent jitter
+	TrackInsert(el.next)
+	TrackInsert(el.prev)
+	TrackInsert(el.nnext)
+	TrackInsert(el.pprev)
+	if (el.nnext) {
+		TrackInsert(PayloadData[el.nnext].next)
+		TrackDelete(PayloadData[el.nnext].nnext)
+	}
+	if (el.pprev) {
+		TrackInsert(PayloadData[el.pprev].prev)
+		TrackDelete(PayloadData[el.pprev].pprev)
+	}
+})
+RegisterEvent("teamplay_point_captured", function(params) { # multistage payload cleanup
+	if (PVEDisabled || ("HasHadMultipleTrains" in getroottable() && HasHadMultipleTrains) || NetProps.GetPropBool(Entities.FindByClassname(null, "tf_gamerules"), "m_bMultipleTrains"))
+		return; # plr failsafe
+	if (PayloadLastPassedTrack == -1 || !PayloadCleanupSafe) return; # there has been no track movement
+	if (NetProps.GetPropInt(Entities.FindByClassname(null, "tf_gamerules"), "m_nGameType") != 3) return; // not payload
+	TrackDeleteFull(PayloadData[NetProps.GetPropInt(PayloadLastPassedTrack, "m_iHammerID")].pprev, true, 1)
 })
 
 // TEMPORARY
