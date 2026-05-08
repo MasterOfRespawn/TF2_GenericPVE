@@ -9,7 +9,7 @@ Most settings are at the start of the file.
 
 Public server
 -------------
-There is a server running this script at: `152.53.53.243`.
+There are two servers running this script at: `152.53.53.243` [US] or `159.195.62.221` [EU].
 If the server or ip changes, this section will be updated.
 
 Features
