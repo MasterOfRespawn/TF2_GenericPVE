@@ -161,21 +161,6 @@ if ("PVEOverrideClass" in this) ::PVEDefaultClass <- PVEOverrideClass # script r
 	"Uncle Pain",
 	"Uncle Frames",
 ]
-if (true){ // scoping
-	local namefile = FileToString("danenames.txt")
-	local danenames = !namefile || namefile == "" ? [] : split(namefile, "\n\r", true)
-	if (danenames.len() > 0) {
-		DaneNames.clear()
-		// there are names in this file
-		for (local i = 0; i < danenames.len(); i++) {
-			danenames[i] = split(danenames[i], ",;", true)
-		}
-		// if no weights are present (like here) SelectWeighted selects randomly
-		local danename_override = SelectWeighted(danenames)
-		foreach (name in danename_override)
-			DaneNames.push(name)
-	}
-}
 
 ::JontoNames <- [
 	"Jontohil3"
@@ -10341,6 +10326,23 @@ RegisterCommand("!dbginc", function(player, args) {
 	::DBGIncursionRegistered <- true
 	::DBGIncursion <- !DBGIncursion
 }, "debug navmesh incursion")
+
+
+if (true){ // scoping
+	local namefile = FileToString("danenames.txt")
+	local danenames = !namefile || namefile == "" ? [] : split(namefile, "\n\r", true)
+	if (danenames.len() > 0) {
+		DaneNames.clear()
+		// there are names in this file
+		for (local i = 0; i < danenames.len(); i++) {
+			danenames[i] = split(danenames[i], ",;", true)
+		}
+		// if no weights are present (like here) SelectWeighted selects randomly
+		local danename_override = SelectWeighted(danenames)
+		foreach (name in danename_override)
+			DaneNames.push(name)
+	}
+}
 
 // TEMPORARY
 # try to set sv_allow_point_servercommand to always if possible to allow for automatic navmesh generation
